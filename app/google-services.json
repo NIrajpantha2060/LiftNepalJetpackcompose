@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1001276668812",
+    "project_id": "lift-nepal",
+    "storage_bucket": "lift-nepal.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1001276668812:android:7921d482c4426b6207b4a9",
+        "android_client_info": {
+          "package_name": "com.example.liftnepal"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDKy9ScEH0vAMF6JLqMdJvj2YkHAqkTR-E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
