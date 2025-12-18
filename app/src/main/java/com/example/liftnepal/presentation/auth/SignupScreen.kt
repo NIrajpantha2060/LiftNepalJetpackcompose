@@ -1,128 +1,203 @@
 package com.example.liftnepal.presentation.auth
 
+
+
+
+
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import com.example.liftnepal.R
+import com.example.liftnepal.data.utils.Result
+import com.example.liftnepal.presentation.viewmodel.AuthViewModel
 
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignupScreen(
-    navController: NavHostController
+    navController: NavHostController,
+    viewModel: AuthViewModel
 ) {
-    var fullName by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
+    var validationError by remember { mutableStateOf("") }
+
+    val signupState by viewModel.signupState.collectAsStateWithLifecycle()
+
+    // Handle navigation when signup succeeds
+    LaunchedEffect(signupState) {
+        if (signupState is Result.Success) {
+            navController.navigate("dashboard") {
+                popUpTo("signup") { inclusive = true }
+            }
+            viewModel.clearSignupState()
+        }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Create Account",
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.primary
+        // Logo
+        Image(
+            painter = painterResource(id = R.drawable.logo),
+            contentDescription = "Logo",
+            modifier = Modifier
+                .size(200.dp)
+                .padding(top = 40.dp)
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
-
+        // Title
         Text(
             text = "Sign up to get started",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(top = 20.dp, bottom = 30.dp)
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        // Validation Error
+        if (validationError.isNotEmpty()) {
+            Text(
+                text = validationError,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                textAlign = TextAlign.Center
+            )
+        }
 
-        // Full Name field
+        // API Error
+        if (signupState is Result.Error) {
+            Text(
+                text = (signupState as Result.Error).message,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                textAlign = TextAlign.Center
+            )
+        }
+
+        // Username Field
         OutlinedTextField(
-            value = fullName,
-            onValueChange = { fullName = it },
-            label = { Text("Full Name") },
+            value = username,
+            onValueChange = { username = it },
+            label = { Text("Username") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            shape = RoundedCornerShape(12.dp)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Email field
+        // Email Field
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
             label = { Text("Email") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            shape = RoundedCornerShape(12.dp)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Password field
+        // Password Field
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation()
+            shape = RoundedCornerShape(12.dp)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Confirm Password field
+        // Confirm Password Field
         OutlinedTextField(
             value = confirmPassword,
             onValueChange = { confirmPassword = it },
             label = { Text("Confirm Password") },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation()
+            shape = RoundedCornerShape(12.dp)
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Sign Up button
+        // Sign Up Button
         Button(
             onClick = {
-                isLoading = true
-                // Simulate signup process
-                // After 2 seconds, navigate to login
-                navController.popBackStack()
-                navController.navigate("login")
+                // Validation
+                when {
+                    username.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty() -> {
+                        validationError = "Please fill all fields"
+                    }
+                    password != confirmPassword -> {
+                        validationError = "Passwords do not match"
+                    }
+                    password.length < 6 -> {
+                        validationError = "Password must be at least 6 characters"
+                    }
+                    !email.contains("@") -> {
+                        validationError = "Please enter a valid email"
+                    }
+                    else -> {
+                        validationError = ""
+                        viewModel.signup(username, email, password)
+                    }
+                }
             },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            shape = RoundedCornerShape(12.dp),
+            enabled = signupState !is Result.Loading
         ) {
-            if (isLoading) {
+            if (signupState is Result.Loading) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp)
                 )
             } else {
-                Text("Create Account")
+                Text("Sign Up", fontSize = 18.sp)
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Login link
+        // Login Link
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
         ) {
-            Text("Already have an account? ")
+//            Text("Already have an account? ")
             TextButton(
-                onClick = {
-                    navController.popBackStack()
-                }
+                onClick = { navController.popBackStack() }
             ) {
-                Text("Sign In")
+                Text("Alredy have an account ?")
             }
         }
     }

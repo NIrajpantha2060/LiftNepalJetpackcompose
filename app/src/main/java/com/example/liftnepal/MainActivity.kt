@@ -46,7 +46,6 @@
 //    }
 //}
 
-
 package com.example.liftnepal
 
 import android.os.Bundle
@@ -56,19 +55,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.example.liftnepal.ui.theme.LiftNepalTheme
-import com.example.liftnepal.presentation.splash.SplashScreen
+import com.example.liftnepal.ui.theme.Theme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            LiftNepalTheme {
+            Theme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    SplashScreen()
+                    AppNavigation()
                 }
             }
         }
