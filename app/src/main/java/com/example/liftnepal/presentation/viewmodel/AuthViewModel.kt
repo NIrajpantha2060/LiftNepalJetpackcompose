@@ -24,6 +24,9 @@ class AuthViewModel : ViewModel() {
     private val _resetState = MutableStateFlow<Result<Boolean>?>(null)
     val resetState: StateFlow<Result<Boolean>?> = _resetState
 
+    val currentUser: FirebaseUser?
+        get() = repository.currentUser
+
     fun login(email: String, password: String) {
         viewModelScope.launch {
             _loginState.value = Result.Loading

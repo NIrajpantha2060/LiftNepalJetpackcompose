@@ -18,7 +18,7 @@ fun AppNavigation() {
     val viewModel: AuthViewModel = viewModel()
 
     NavHost(navController = navController, startDestination = "splash") {
-        composable("splash")          { SplashScreen(navController) }
+        composable("splash")          { SplashScreen(navController, viewModel) }
         composable("login")           { LoginScreen(navController, viewModel) }
         composable("signup")          { SignupScreen(navController, viewModel) }
         composable("forget_password") { ForgetPasswordScreen(navController, viewModel) }

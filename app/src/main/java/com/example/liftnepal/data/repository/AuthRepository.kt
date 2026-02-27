@@ -12,6 +12,9 @@ class AuthRepository {
     private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance().reference
 
+    val currentUser: FirebaseUser?
+        get() = auth.currentUser
+
     suspend fun login(email: String, password: String): Result<FirebaseUser> {
         return try {
             val result = auth.signInWithEmailAndPassword(email, password).await()
@@ -68,8 +71,6 @@ class AuthRepository {
             Result.Error(e.message ?: "Failed to send reset email")
         }
     }
-
-    fun getCurrentUser(): FirebaseUser? = auth.currentUser
 
     fun logout() = auth.signOut()
 }
