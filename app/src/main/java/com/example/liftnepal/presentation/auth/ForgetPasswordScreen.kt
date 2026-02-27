@@ -45,7 +45,7 @@ fun ForgetPasswordScreen(
             painter = painterResource(id = R.drawable.logo),
             contentDescription = "Logo",
             modifier = Modifier
-                .size(100.dp)
+                .size(200.dp)
                 .padding(top = 80.dp)
         )
 
