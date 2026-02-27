@@ -28,6 +28,7 @@ fun DashboardScreen(
     viewModel: AuthViewModel
 ) {
     var currentRoute by remember { mutableStateOf("rides") }
+    val currentUser = viewModel.currentUser
 
     val bottomNavItems = listOf(
         BottomNavItem("Rides",    Icons.Default.Home,      "rides"),
@@ -38,7 +39,7 @@ fun DashboardScreen(
 
     Scaffold(
         containerColor = SurfaceVariant,
-        topBar = { UserTopBar(currentRoute = currentRoute) },
+        topBar = { UserTopBar(currentRoute = currentRoute, userName = currentUser?.displayName ?: "") },
         bottomBar = {
             BottomNavBar(
                 items = bottomNavItems,
@@ -64,8 +65,8 @@ fun DashboardScreen(
                     "bookings" -> BookingsSection()
                     "issues"   -> IssueSection()
                     "menu"     -> MenuSection(
-                        userName = "John Doe",
-                        userEmail = "john@liftnepal.com",
+                        userName = currentUser?.displayName ?: "User",
+                        userEmail = currentUser?.email ?: "",
                         onLogout = {
                             viewModel.logout()
                             navController.navigate("login") {
@@ -81,7 +82,7 @@ fun DashboardScreen(
 }
 
 @Composable
-fun UserTopBar(currentRoute: String) {
+fun UserTopBar(currentRoute: String, userName: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -98,7 +99,7 @@ fun UserTopBar(currentRoute: String) {
                 if (currentRoute == "rides") {
                     Column {
                         Text("Hello,", fontSize = 13.sp, color = TextSecondary)
-                        Text("John Doe", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Text(userName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                     }
                 } else {
                     Text(
@@ -132,7 +133,7 @@ fun UserTopBar(currentRoute: String) {
                             .background(PrimaryColor, RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("J", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text(userName.firstOrNull()?.toString() ?: "", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
             }
