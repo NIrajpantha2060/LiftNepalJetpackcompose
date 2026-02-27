@@ -420,6 +420,15 @@ fun ChangePasswordDialog(onDismiss: () -> Unit) {
     var showCurrent by remember { mutableStateOf(false) }
     var showNew by remember { mutableStateOf(false) }
     var showConfirm by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf("") }
+
+    fun isPasswordStrong(password: String): Boolean {
+        val hasUpperCase = password.any { it.isUpperCase() }
+        val hasLowerCase = password.any { it.isLowerCase() }
+        val hasDigit = password.any { it.isDigit() }
+        val hasSpecialChar = password.any { !it.isLetterOrDigit() }
+        return password.length >= 8 && hasUpperCase && hasLowerCase && hasDigit && hasSpecialChar
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -428,8 +437,12 @@ fun ChangePasswordDialog(onDismiss: () -> Unit) {
         title = { Text("Change Password", fontWeight = FontWeight.Bold, color = TextPrimary) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (error.isNotEmpty()) {
+                    Text(error, color = AccentRed, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
+                }
+
                 OutlinedTextField(
-                    value = current, onValueChange = { current = it },
+                    value = current, onValueChange = { current = it; error = "" },
                     label = { Text("Current Password") }, modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     visualTransformation = if (showCurrent) VisualTransformation.None else PasswordVisualTransformation(),
@@ -437,15 +450,16 @@ fun ChangePasswordDialog(onDismiss: () -> Unit) {
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryColor, unfocusedBorderColor = DividerColor, cursorColor = PrimaryColor)
                 )
                 OutlinedTextField(
-                    value = newPass, onValueChange = { newPass = it },
+                    value = newPass, onValueChange = { newPass = it; error = "" },
                     label = { Text("New Password") }, modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     visualTransformation = if (showNew) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = { IconButton(onClick = { showNew = !showNew }) { Icon(if (showNew) Icons.Default.VisibilityOff else Icons.Default.Visibility, null, tint = TextSecondary) } },
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryColor, unfocusedBorderColor = DividerColor, cursorColor = PrimaryColor)
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryColor, unfocusedBorderColor = DividerColor, cursorColor = PrimaryColor),
+                    supportingText = { Text("Min 8 chars, uppercase, lowercase, number & special char") }
                 )
                 OutlinedTextField(
-                    value = confirm, onValueChange = { confirm = it },
+                    value = confirm, onValueChange = { confirm = it; error = "" },
                     label = { Text("Confirm Password") }, modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     visualTransformation = if (showConfirm) VisualTransformation.None else PasswordVisualTransformation(),
@@ -455,7 +469,27 @@ fun ChangePasswordDialog(onDismiss: () -> Unit) {
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss, shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)) {
+            Button(
+                onClick = {
+                    when {
+                        current.isEmpty() || newPass.isEmpty() || confirm.isEmpty() -> {
+                            error = "Please fill all fields"
+                        }
+                        newPass != confirm -> {
+                            error = "New passwords do not match"
+                        }
+                        !isPasswordStrong(newPass) -> {
+                            error = "New password is too weak"
+                        }
+                        else -> {
+                            // Logic to update password would go here
+                            onDismiss()
+                        }
+                    }
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
+            ) {
                 Text("Update", color = Color.White)
             }
         },

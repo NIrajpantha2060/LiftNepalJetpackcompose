@@ -1,9 +1,5 @@
 package com.example.liftnepal.presentation.viewmodel
 
-
-
-
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.liftnepal.data.repository.AuthRepository
@@ -35,10 +31,10 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    fun signup(username: String, email: String, password: String) {
+    fun signup(username: String, email: String, password: String, phoneNumber: String) {
         viewModelScope.launch {
             _signupState.value = Result.Loading
-            _signupState.value = repository.signup(username, email, password)
+            _signupState.value = repository.signup(username, email, password, phoneNumber)
         }
     }
 

@@ -1,8 +1,5 @@
 package com.example.liftnepal.data.repository
 
-
-
-
 import com.example.liftnepal.data.model.User
 import com.example.liftnepal.data.utils.Result
 import com.google.firebase.auth.FirebaseAuth
@@ -24,23 +21,35 @@ class AuthRepository {
         }
     }
 
-    suspend fun signup(username: String, email: String, password: String): Result<FirebaseUser> {
+    suspend fun signup(username: String, email: String, password: String, phoneNumber: String): Result<FirebaseUser> {
         return try {
-            // Create user in Firebase Auth
+            // 1. Check if phone number already exists in Realtime Database
+            val phoneCheck = database.child("users")
+                .orderByChild("phoneNumber")
+                .equalTo(phoneNumber)
+                .get()
+                .await()
+
+            if (phoneCheck.exists()) {
+                return Result.Error("This phone number is already registered.")
+            }
+
+            // 2. Create user in Firebase Auth (Firebase handles duplicate emails automatically)
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             val user = result.user!!
 
-            // Update profile with username
+            // 3. Update profile with username
             val profileUpdates = UserProfileChangeRequest.Builder()
                 .setDisplayName(username)
                 .build()
             user.updateProfile(profileUpdates).await()
 
-            // Save user data to Realtime Database
+            // 4. Save user data to Realtime Database
             val userData = User(
                 uid = user.uid,
                 email = email,
-                displayName = username
+                displayName = username,
+                phoneNumber = phoneNumber
             )
 
             database.child("users").child(user.uid).setValue(userData).await()

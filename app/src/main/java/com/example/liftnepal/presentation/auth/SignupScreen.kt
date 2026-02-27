@@ -6,10 +6,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -32,6 +36,7 @@ fun SignupScreen(
 ) {
     var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -48,6 +53,14 @@ fun SignupScreen(
             }
             viewModel.clearSignupState()
         }
+    }
+
+    fun isPasswordStrong(password: String): Boolean {
+        val hasUpperCase = password.any { it.isUpperCase() }
+        val hasLowerCase = password.any { it.isLowerCase() }
+        val hasDigit = password.any { it.isDigit() }
+        val hasSpecialChar = password.any { !it.isLetterOrDigit() }
+        return password.length >= 8 && hasUpperCase && hasLowerCase && hasDigit && hasSpecialChar
     }
 
     Column(
@@ -176,6 +189,28 @@ fun SignupScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Phone Number Field
+            OutlinedTextField(
+                value = phoneNumber,
+                onValueChange = { phoneNumber = it },
+                label = {
+                    Text(
+                        "Phone Number",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    focusedLabelColor = MaterialTheme.colorScheme.primary
+                ),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Password Field
             OutlinedTextField(
                 value = password,
@@ -200,7 +235,10 @@ fun SignupScreen(
                         onToggle = { passwordVisible = !passwordVisible }
                     )
                 },
-                singleLine = true
+                singleLine = true,
+                supportingText = {
+                    Text("Min 8 chars, uppercase, lowercase, number & special char")
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -239,21 +277,24 @@ fun SignupScreen(
                 onClick = {
                     // Validation
                     when {
-                        username.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty() -> {
+                        username.isEmpty() || email.isEmpty() || phoneNumber.isEmpty() || password.isEmpty() || confirmPassword.isEmpty() -> {
                             validationError = "Please fill all fields"
+                        }
+                        phoneNumber.length < 10 -> {
+                            validationError = "Please enter a valid phone number"
                         }
                         password != confirmPassword -> {
                             validationError = "Passwords do not match"
                         }
-                        password.length < 6 -> {
-                            validationError = "Password must be at least 6 characters"
+                        !isPasswordStrong(password) -> {
+                            validationError = "Password is too weak. Must contain uppercase, lowercase, number, and special character (min 8 chars)."
                         }
                         !email.contains("@") -> {
                             validationError = "Please enter a valid email"
                         }
                         else -> {
                             validationError = ""
-                            viewModel.signup(username, email, password)
+                            viewModel.signup(username, email, password, phoneNumber)
                         }
                     }
                 },
@@ -340,5 +381,19 @@ fun SignupScreen(
 
             Spacer(modifier = Modifier.height(40.dp))
         }
+    }
+}
+
+@Composable
+fun PasswordVisibilityToggle(
+    isVisible: Boolean,
+    onToggle: () -> Unit
+) {
+    val icon = if (isVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+    IconButton(onClick = onToggle) {
+        Icon(
+            imageVector = icon,
+            contentDescription = if (isVisible) "Hide password" else "Show password"
+        )
     }
 }
