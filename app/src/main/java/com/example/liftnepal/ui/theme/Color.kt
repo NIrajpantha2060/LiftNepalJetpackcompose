@@ -1,81 +1,3 @@
-//package com.example.liftnepal.ui.theme
-//
-//import androidx.compose.ui.graphics.Color
-//
-//val Purple80 = Color(0xFFD0BCFF)
-//val PurpleGrey80 = Color(0xFFCCC2DC)
-//val Pink80 = Color(0xFFEFB8C8)
-//
-//val Purple40 = Color(0xFF6650a4)
-//val PurpleGrey40 = Color(0xFF625b71)
-//val Pink40 = Color(0xFF7D5260)
-
-//package com.example.liftnepal.ui.theme
-//
-//import androidx.compose.ui.graphics.Color
-//
-//val Purple80 = Color(0xFFD0BCFF)
-//val PurpleGrey80 = Color(0xFFCCC2DC)
-//val Pink80 = Color(0xFFEFB8C8)
-//
-//val Purple40 = Color(0xFF6650a4)
-//val PurpleGrey40 = Color(0xFF625b71)
-//val Pink40 = Color(0xFF7D5260)
-//
-//// Custom colors for Lift Nepal
-//val PrimaryColor = Color(0xFF4A6FA5)  // Blue color
-//val SecondaryColor = Color(0xFF6B9AC4)
-//val BackgroundColor = Color(0xFFF8F9FA)
-
-
-//
-//package com.example.liftnepal.ui.theme
-//
-//import androidx.compose.ui.graphics.Color
-//
-//val Purple80 = Color(0xFFD0BCFF)
-//val PurpleGrey80 = Color(0xFFCCC2DC)
-//val Pink80 = Color(0xFFEFB8C8)
-//val Purple40 = Color(0xFF6650a4)
-//val PurpleGrey40 = Color(0xFF625b71)
-//val Pink40 = Color(0xFF7D5260)
-//
-//// Custom colors
-//val PrimaryColor = Color(0xFF4A6FA5)
-//val SecondaryColor = Color(0xFF6B9AC4)
-//val BackgroundColor = Color(0xFFF8F9FA)
-//
-//
-//package com.example.liftnepal.ui.theme
-//
-//import androidx.compose.ui.graphics.Color
-//
-//val Purple80 = Color(0xFFD0BCFF)
-//val PurpleGrey80 = Color(0xFFCCC2DC)
-//val Pink80 = Color(0xFFEFB8C8)
-//val Purple40 = Color(0xFF6650a4)
-//val PurpleGrey40 = Color(0xFF625b71)
-//val Pink40 = Color(0xFF7D5260)
-//
-//// Custom colors
-//val PrimaryColor = Color(0xFF4A6FA5)
-//val SecondaryColor = Color(0xFF6B9AC4)
-//val BackgroundColor = Color(0xFFF8F9FA)
-//
-//// Dashboard colors
-//val CardBackground    = Color(0xFFFFFFFF)
-//val SurfaceVariant    = Color(0xFFF0F4F8)
-//val AccentGreen       = Color(0xFF2ECC71)
-//val AccentOrange      = Color(0xFFF39C12)
-//val AccentRed         = Color(0xFFE74C3C)
-//val AccentBlue        = Color(0xFF3498DB)
-//val TextPrimary       = Color(0xFF1A1A2E)
-//val TextSecondary     = Color(0xFF6C757D)
-//val DividerColor      = Color(0xFFE9ECEF)
-//val BottomNavBackground = Color(0xFFFFFFFF)
-//val SelectedNavItem   = Color(0xFF4A6FA5)
-//val UnselectedNavItem = Color(0xFFADB5BD)
-
 package com.example.liftnepal.ui.theme
 
 import androidx.compose.ui.graphics.Color
@@ -87,21 +9,22 @@ val Purple40 = Color(0xFF6650a4)
 val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
-// Custom colors
-val PrimaryColor     = Color(0xFF4A6FA5)
-val SecondaryColor   = Color(0xFF6B9AC4)
-val BackgroundColor  = Color(0xFFF8F9FA)
+// ── LiftNepal Logo Theme ───────────────────────────────────
+val PrimaryColor     = Color(0xFFD02931)   // Red (main brand color)
+val SecondaryColor   = Color(0xFF153F7B)   // Dark Blue
+val BackgroundColor  = Color(0xFFFBFBFB)   // White background
 
-// Dashboard colors
+// ── Dashboard colors ───────────────────────────────────────
 val CardBackground      = Color(0xFFFFFFFF)
-val SurfaceVariant      = Color(0xFFF0F4F8)
-val AccentGreen         = Color(0xFF2ECC71)
-val AccentOrange        = Color(0xFFF39C12)
-val AccentRed           = Color(0xFFE74C3C)
-val AccentBlue          = Color(0xFF3498DB)
-val TextPrimary         = Color(0xFF1A1A2E)
+val SurfaceVariant      = Color(0xFFF8F9FA)  // Light neutral surface
+val AccentRed           = Color(0xFFD02931)  // Same as primary
+val AccentDarkBlue      = Color(0xFF153F7B)  // Dark Blue from logo
+val AccentBrightBlue    = Color(0xFF037DC0)  // Bright Blue from logo
+val AccentOrange        = Color(0xFFF39C12)  // Keep for warnings
+val AccentGreen         = Color(0xFF27AE60)  // Keep for success states
+val TextPrimary         = Color(0xFF212529)  // Dark neutral text
 val TextSecondary       = Color(0xFF6C757D)
-val DividerColor        = Color(0xFFE9ECEF)
+val DividerColor        = Color(0xFFE9ECEF)  // Neutral divider
 val BottomNavBackground = Color(0xFFFFFFFF)
-val SelectedNavItem     = Color(0xFF4A6FA5)
+val SelectedNavItem     = Color(0xFFD02931)  // Red
 val UnselectedNavItem   = Color(0xFFADB5BD)

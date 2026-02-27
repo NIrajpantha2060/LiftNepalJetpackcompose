@@ -34,6 +34,7 @@ fun MenuSection(
     var isSwitchedToRider by remember { mutableStateOf(false) }
     var showProfileDialog by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(false) }
+    var showVerifyDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -68,12 +69,26 @@ fun MenuSection(
                 Spacer(Modifier.height(4.dp))
                 Text(userEmail, fontSize = 13.sp, color = TextSecondary)
                 Spacer(Modifier.height(12.dp))
-                Box(
-                    modifier = Modifier
-                        .background(AccentBlue.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                ) {
-                    Text("Passenger", fontSize = 13.sp, color = AccentBlue, fontWeight = FontWeight.SemiBold)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .background(PrimaryColor.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Text("Passenger", fontSize = 13.sp, color = PrimaryColor, fontWeight = FontWeight.SemiBold)
+                    }
+                    // Unverified badge
+                    Box(
+                        modifier = Modifier
+                            .background(AccentOrange.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Warning, null, tint = AccentOrange, modifier = Modifier.size(13.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Unverified", fontSize = 13.sp, color = AccentOrange, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
                 }
             }
         }
@@ -91,29 +106,57 @@ fun MenuSection(
             elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                MenuRow(
-                    icon = Icons.Default.Person,
-                    iconBg = PrimaryColor,
-                    label = "My Profile",
-                    subtitle = "View your account info",
-                    onClick = { showProfileDialog = true }
-                )
+                MenuRow(Icons.Default.Person,       PrimaryColor,     "My Profile",             "View your account info",    onClick = { showProfileDialog = true })
                 RowDivider()
-                MenuRow(
-                    icon = Icons.Default.Lock,
-                    iconBg = AccentOrange,
-                    label = "Change Password",
-                    subtitle = "Update your password",
-                    onClick = { showChangePasswordDialog = true }
-                )
+                MenuRow(Icons.Default.Lock,         AccentOrange,     "Change Password",        "Update your password",      onClick = { showChangePasswordDialog = true })
                 RowDivider()
-                MenuRow(
-                    icon = Icons.Default.AccountCircle,
-                    iconBg = AccentBlue,
-                    label = "Update Profile Picture",
-                    subtitle = "Change your avatar",
-                    onClick = { }
-                )
+                MenuRow(Icons.Default.AccountCircle,AccentDarkBlue,   "Update Profile Picture", "Change your avatar",        onClick = { })
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Verify section
+        MenuSectionLabel("Verification")
+        Spacer(Modifier.height(8.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = CardBackground),
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            // Verify Yourself row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showVerifyDialog = true }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .background(AccentOrange.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.VerifiedUser, null, tint = AccentOrange, modifier = Modifier.size(22.dp))
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column {
+                        Text("Verify Yourself", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextPrimary)
+                        Text("Required to activate Rider Mode", fontSize = 12.sp, color = TextSecondary)
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .background(AccentOrange.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text("Pending", fontSize = 11.sp, color = AccentOrange, fontWeight = FontWeight.SemiBold)
+                }
             }
         }
 
@@ -138,27 +181,24 @@ fun MenuSection(
                     Box(
                         modifier = Modifier
                             .size(46.dp)
-                            .background(AccentGreen.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
+                            .background(PrimaryColor.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.TwoWheeler, null, tint = AccentGreen, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Default.TwoWheeler, null, tint = PrimaryColor, modifier = Modifier.size(24.dp))
                     }
                     Spacer(Modifier.width(14.dp))
                     Column {
                         Text("Switch to Rider Mode", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextPrimary)
                         Text(
-                            if (isSwitchedToRider) "You are now a Rider" else "Currently a Passenger",
+                            if (isSwitchedToRider) "You are now a Rider" else "Verify yourself first",
                             fontSize = 12.sp, color = TextSecondary
                         )
                     }
                 }
                 Switch(
                     checked = isSwitchedToRider,
-                    onCheckedChange = {
-                        isSwitchedToRider = it
-                        if (it) onSwitchToRider()
-                    },
-                    colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = AccentGreen)
+                    onCheckedChange = { isSwitchedToRider = it; if (it) onSwitchToRider() },
+                    colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = PrimaryColor)
                 )
             }
         }
@@ -195,6 +235,7 @@ fun MenuSection(
         Spacer(Modifier.height(24.dp))
     }
 
+    // Profile Dialog
     if (showProfileDialog) {
         AlertDialog(
             onDismissRequest = { showProfileDialog = false },
@@ -207,6 +248,7 @@ fun MenuSection(
                     ProfileDetailRow("Email", userEmail)
                     ProfileDetailRow("Role", "Passenger")
                     ProfileDetailRow("Member Since", "June 2025")
+                    ProfileDetailRow("Verified", "No")
                 }
             },
             confirmButton = {
@@ -219,8 +261,95 @@ fun MenuSection(
         )
     }
 
+    // Change Password Dialog
     if (showChangePasswordDialog) {
         ChangePasswordDialog(onDismiss = { showChangePasswordDialog = false })
+    }
+
+    // Verify Yourself Dialog — placeholder UI
+    if (showVerifyDialog) {
+        AlertDialog(
+            onDismissRequest = { showVerifyDialog = false },
+            shape = RoundedCornerShape(24.dp),
+            containerColor = CardBackground,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.VerifiedUser, null, tint = AccentOrange, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Verify Yourself", fontWeight = FontWeight.Bold, color = TextPrimary)
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Info banner
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(AccentOrange.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+                            .padding(14.dp)
+                    ) {
+                        Text(
+                            "Verification is required to activate Rider Mode. This feature will be available soon.",
+                            fontSize = 13.sp,
+                            color = TextSecondary,
+                            lineHeight = 20.sp
+                        )
+                    }
+
+                    // Steps (coming soon placeholders)
+                    VerifyStep(number = "1", label = "Upload Government ID",    done = false)
+                    VerifyStep(number = "2", label = "Take a Selfie",           done = false)
+                    VerifyStep(number = "3", label = "Review & Submit",         done = false)
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(PrimaryColor.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "Coming Soon",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryColor
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showVerifyDialog = false },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
+                ) { Text("Got it", color = Color.White) }
+            }
+        )
+    }
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+
+@Composable
+fun VerifyStep(number: String, label: String, done: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .background(
+                    if (done) AccentGreen else UnselectedNavItem.copy(alpha = 0.2f),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (done) {
+                Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(14.dp))
+            } else {
+                Text(number, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(label, fontSize = 14.sp, color = if (done) TextPrimary else TextSecondary, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -300,60 +429,38 @@ fun ChangePasswordDialog(onDismiss: () -> Unit) {
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
-                    value = current,
-                    onValueChange = { current = it },
-                    label = { Text("Current Password") },
-                    modifier = Modifier.fillMaxWidth(),
+                    value = current, onValueChange = { current = it },
+                    label = { Text("Current Password") }, modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     visualTransformation = if (showCurrent) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = { showCurrent = !showCurrent }) {
-                            Icon(if (showCurrent) Icons.Default.VisibilityOff else Icons.Default.Visibility, null, tint = TextSecondary)
-                        }
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryColor, unfocusedBorderColor = DividerColor)
+                    trailingIcon = { IconButton(onClick = { showCurrent = !showCurrent }) { Icon(if (showCurrent) Icons.Default.VisibilityOff else Icons.Default.Visibility, null, tint = TextSecondary) } },
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryColor, unfocusedBorderColor = DividerColor, cursorColor = PrimaryColor)
                 )
                 OutlinedTextField(
-                    value = newPass,
-                    onValueChange = { newPass = it },
-                    label = { Text("New Password") },
-                    modifier = Modifier.fillMaxWidth(),
+                    value = newPass, onValueChange = { newPass = it },
+                    label = { Text("New Password") }, modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     visualTransformation = if (showNew) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = { showNew = !showNew }) {
-                            Icon(if (showNew) Icons.Default.VisibilityOff else Icons.Default.Visibility, null, tint = TextSecondary)
-                        }
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryColor, unfocusedBorderColor = DividerColor)
+                    trailingIcon = { IconButton(onClick = { showNew = !showNew }) { Icon(if (showNew) Icons.Default.VisibilityOff else Icons.Default.Visibility, null, tint = TextSecondary) } },
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryColor, unfocusedBorderColor = DividerColor, cursorColor = PrimaryColor)
                 )
                 OutlinedTextField(
-                    value = confirm,
-                    onValueChange = { confirm = it },
-                    label = { Text("Confirm Password") },
-                    modifier = Modifier.fillMaxWidth(),
+                    value = confirm, onValueChange = { confirm = it },
+                    label = { Text("Confirm Password") }, modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     visualTransformation = if (showConfirm) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = { showConfirm = !showConfirm }) {
-                            Icon(if (showConfirm) Icons.Default.VisibilityOff else Icons.Default.Visibility, null, tint = TextSecondary)
-                        }
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryColor, unfocusedBorderColor = DividerColor)
+                    trailingIcon = { IconButton(onClick = { showConfirm = !showConfirm }) { Icon(if (showConfirm) Icons.Default.VisibilityOff else Icons.Default.Visibility, null, tint = TextSecondary) } },
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryColor, unfocusedBorderColor = DividerColor, cursorColor = PrimaryColor)
                 )
             }
         },
         confirmButton = {
-            Button(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
-            ) { Text("Update", color = Color.White) }
+            Button(onClick = onDismiss, shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)) {
+                Text("Update", color = Color.White)
+            }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(12.dp)) {
-                Text("Cancel", color = TextSecondary)
-            }
+            OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(12.dp)) { Text("Cancel", color = TextSecondary) }
         }
     )
 }

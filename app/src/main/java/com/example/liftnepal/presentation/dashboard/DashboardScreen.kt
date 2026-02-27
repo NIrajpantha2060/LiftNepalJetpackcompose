@@ -29,7 +29,6 @@ fun DashboardScreen(
 ) {
     var currentRoute by remember { mutableStateOf("rides") }
 
-    // Using only base Material icons (no extended needed for these)
     val bottomNavItems = listOf(
         BottomNavItem("Rides",    Icons.Default.Home,      "rides"),
         BottomNavItem("Bookings", Icons.Default.DateRange, "bookings"),
@@ -39,9 +38,7 @@ fun DashboardScreen(
 
     Scaffold(
         containerColor = SurfaceVariant,
-        topBar = {
-            UserTopBar(currentRoute = currentRoute)
-        },
+        topBar = { UserTopBar(currentRoute = currentRoute) },
         bottomBar = {
             BottomNavBar(
                 items = bottomNavItems,
@@ -75,9 +72,7 @@ fun DashboardScreen(
                                 popUpTo("dashboard") { inclusive = true }
                             }
                         },
-                        onSwitchToRider = {
-                            // wire rider navigation here later
-                        }
+                        onSwitchToRider = { /* wire later */ }
                     )
                 }
             }
@@ -100,7 +95,6 @@ fun UserTopBar(currentRoute: String) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Dynamic title
                 if (currentRoute == "rides") {
                     Column {
                         Text("Hello,", fontSize = 13.sp, color = TextSecondary)
@@ -120,7 +114,6 @@ fun UserTopBar(currentRoute: String) {
                     )
                 }
 
-                // Right side icons
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -128,7 +121,7 @@ fun UserTopBar(currentRoute: String) {
                     Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .background(PrimaryColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
+                            .background(PrimaryColor.copy(alpha = 0.12f), RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(Icons.Default.Notifications, null, tint = PrimaryColor, modifier = Modifier.size(22.dp))

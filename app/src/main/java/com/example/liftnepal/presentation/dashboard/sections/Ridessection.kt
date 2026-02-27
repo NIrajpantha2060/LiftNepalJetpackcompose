@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,39 +51,21 @@ fun RidesSection() {
             .background(SurfaceVariant)
             .padding(16.dp)
     ) {
-        // Header
-        Text(
-            text = "Available Rides",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextPrimary
-        )
-        Text(
-            text = "Find and book a ride near you",
-            fontSize = 13.sp,
-            color = TextSecondary
-        )
-
-        Spacer(modifier = Modifier.height(14.dp))
+        Text("Available Rides", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+        Text("Find and book a ride near you", fontSize = 13.sp, color = TextSecondary)
+        Spacer(Modifier.height(14.dp))
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(availableRides) { ride ->
                 AvailableRideCard(
                     ride = ride,
-                    onBook = {
-                        selectedRide = ride
-                        showBookDialog = true
-                    },
-                    onViewDetails = {
-                        selectedRide = ride
-                        showDetailsDialog = true
-                    }
+                    onBook = { selectedRide = ride; showBookDialog = true },
+                    onViewDetails = { selectedRide = ride; showDetailsDialog = true }
                 )
             }
         }
     }
 
-    // Book Ride Dialog
     if (showBookDialog && selectedRide != null) {
         BookRideDialog(
             ride = selectedRide!!,
@@ -90,31 +73,21 @@ fun RidesSection() {
             onConfirm = { showBookDialog = false }
         )
     }
-
-    // View Details Dialog
     if (showDetailsDialog && selectedRide != null) {
-        RideDetailsDialog(
-            ride = selectedRide!!,
-            onDismiss = { showDetailsDialog = false }
-        )
+        RideDetailsDialog(ride = selectedRide!!, onDismiss = { showDetailsDialog = false })
     }
 }
 
 @Composable
-fun AvailableRideCard(
-    ride: AvailableRide,
-    onBook: () -> Unit,
-    onViewDetails: () -> Unit
-) {
+fun AvailableRideCard(ride: AvailableRide, onBook: () -> Unit, onViewDetails: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-
-            // Rider info row
+            // Rider info + price
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -127,89 +100,54 @@ fun AvailableRideCard(
                             .background(PrimaryColor.copy(alpha = 0.12f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            Icons.Default.Person,
-                            contentDescription = null,
-                            tint = PrimaryColor,
-                            modifier = Modifier.size(22.dp)
-                        )
+                        Icon(Icons.Default.Person, null, tint = PrimaryColor, modifier = Modifier.size(22.dp))
                     }
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(Modifier.width(10.dp))
                     Column {
-                        Text(
-                            text = ride.riderName,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 15.sp,
-                            color = TextPrimary
-                        )
+                        Text(ride.riderName, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextPrimary)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Star, null, tint = AccentOrange, modifier = Modifier.size(13.dp))
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Text(text = ride.rating, fontSize = 12.sp, color = TextSecondary)
+                            Spacer(Modifier.width(2.dp))
+                            Text(ride.rating, fontSize = 12.sp, color = TextSecondary)
                         }
                     }
                 }
-
-                // Price badge
                 Box(
                     modifier = Modifier
                         .background(PrimaryColor, RoundedCornerShape(12.dp))
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Text(
-                        text = ride.price,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = CardBackground
-                    )
+                    Text(ride.price, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CardBackground)
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
             HorizontalDivider(color = DividerColor)
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
             // From → To
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.LocationOn, null, tint = AccentGreen, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(text = ride.from, fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
+                Icon(Icons.Default.LocationOn, null, tint = PrimaryColor, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(ride.from, fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
             }
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            // Arrow
-            Row {
-                Spacer(modifier = Modifier.width(7.dp))
-                Box(
-                    modifier = Modifier
-                        .width(2.dp)
-                        .height(16.dp)
-                        .background(DividerColor)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(2.dp))
-
+            Row { Spacer(Modifier.width(7.dp)); Box(Modifier.width(2.dp).height(14.dp).background(DividerColor)) }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.LocationOn, null, tint = AccentRed, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(text = ride.to, fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
+                Icon(Icons.Default.LocationOn, null, tint = AccentDarkBlue, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(ride.to, fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(Modifier.height(10.dp))
 
-            // Date, time, seats row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                RideInfoChip(icon = Icons.Default.DateRange, label = ride.date)
-                RideInfoChip(icon = Icons.Default.AccessTime, label = ride.time)
-                RideInfoChip(icon = Icons.Default.EventSeat, label = "${ride.seats} seats")
+            // Chips
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                RideInfoChip(Icons.Default.DateRange, ride.date)
+                RideInfoChip(Icons.Default.AccessTime, ride.time)
+                RideInfoChip(Icons.Default.EventSeat, "${ride.seats} seats")
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(Modifier.height(14.dp))
 
             // Action buttons
             Row(
@@ -220,12 +158,10 @@ fun AvailableRideCard(
                     onClick = onViewDetails,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryColor),
-                    border = ButtonDefaults.outlinedButtonBorder.copy()
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryColor)
                 ) {
                     Text("View Details", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
-
                 Button(
                     onClick = onBook,
                     modifier = Modifier.weight(1f),
@@ -233,7 +169,7 @@ fun AvailableRideCard(
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
                 ) {
                     Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(Modifier.width(6.dp))
                     Text("Book Ride", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
@@ -242,16 +178,16 @@ fun AvailableRideCard(
 }
 
 @Composable
-fun RideInfoChip(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String) {
+fun RideInfoChip(icon: ImageVector, label: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .background(SurfaceVariant, RoundedCornerShape(8.dp))
             .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
-        Icon(icon, null, tint = TextSecondary, modifier = Modifier.size(13.dp))
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(text = label, fontSize = 11.sp, color = TextSecondary)
+        Icon(icon, null, tint = AccentDarkBlue, modifier = Modifier.size(13.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(label, fontSize = 11.sp, color = TextSecondary)
     }
 }
 
@@ -261,17 +197,15 @@ fun BookRideDialog(ride: AvailableRide, onDismiss: () -> Unit, onConfirm: () -> 
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(24.dp),
         containerColor = CardBackground,
-        title = {
-            Text("Confirm Booking", fontWeight = FontWeight.Bold, color = TextPrimary)
-        },
+        title = { Text("Confirm Booking", fontWeight = FontWeight.Bold, color = TextPrimary) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                BookingDetailRow("Rider", ride.riderName)
-                BookingDetailRow("From", ride.from)
-                BookingDetailRow("To", ride.to)
-                BookingDetailRow("Date", ride.date)
-                BookingDetailRow("Time", ride.time)
-                BookingDetailRow("Price", ride.price)
+                RideDetailRow("Rider",  ride.riderName)
+                RideDetailRow("From",   ride.from)
+                RideDetailRow("To",     ride.to)
+                RideDetailRow("Date",   ride.date)
+                RideDetailRow("Time",   ride.time)
+                RideDetailRow("Price",  ride.price)
             }
         },
         confirmButton = {
@@ -295,19 +229,17 @@ fun RideDetailsDialog(ride: AvailableRide, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(24.dp),
         containerColor = CardBackground,
-        title = {
-            Text("Ride Details", fontWeight = FontWeight.Bold, color = TextPrimary)
-        },
+        title = { Text("Ride Details", fontWeight = FontWeight.Bold, color = TextPrimary) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                BookingDetailRow("Rider Name", ride.riderName)
-                BookingDetailRow("Rating", "⭐ ${ride.rating}")
-                BookingDetailRow("From", ride.from)
-                BookingDetailRow("To", ride.to)
-                BookingDetailRow("Date", ride.date)
-                BookingDetailRow("Time", ride.time)
-                BookingDetailRow("Price", ride.price)
-                BookingDetailRow("Available Seats", "${ride.seats}")
+                RideDetailRow("Rider Name",       ride.riderName)
+                RideDetailRow("Rating",           "⭐ ${ride.rating}")
+                RideDetailRow("From",             ride.from)
+                RideDetailRow("To",               ride.to)
+                RideDetailRow("Date",             ride.date)
+                RideDetailRow("Time",             ride.time)
+                RideDetailRow("Price",            ride.price)
+                RideDetailRow("Available Seats",  "${ride.seats}")
             }
         },
         confirmButton = {
@@ -321,7 +253,7 @@ fun RideDetailsDialog(ride: AvailableRide, onDismiss: () -> Unit) {
 }
 
 @Composable
-fun BookingDetailRow(label: String, value: String) {
+fun RideDetailRow(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -329,7 +261,7 @@ fun BookingDetailRow(label: String, value: String) {
             .padding(horizontal = 14.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = label, fontSize = 13.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
-        Text(text = value, fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+        Text(label, fontSize = 13.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
+        Text(value, fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.SemiBold)
     }
 }

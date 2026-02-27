@@ -70,7 +70,7 @@ fun BottomNavBar(
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
-                                .background(SelectedNavItem.copy(alpha = 0.12f), CircleShape),
+                                .background(SelectedNavItem.copy(alpha = 0.15f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(item.icon, item.label, tint = iconColor, modifier = Modifier.size(22.dp))

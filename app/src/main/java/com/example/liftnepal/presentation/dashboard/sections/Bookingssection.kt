@@ -29,21 +29,18 @@ data class UserBooking(
 )
 
 private val myBookings = listOf(
-    UserBooking("1", "Rajesh Hamal",   "Thamel, Kathmandu",  "Patan Durbar Square", "2025-06-10", "08:00 AM", "NPR 250", "Completed"),
-    UserBooking("2", "Bikash Tamang",  "New Baneshwor",      "Boudhanath Stupa",    "2025-06-11", "10:00 AM", "NPR 180", "Completed"),
-    UserBooking("3", "Sita Gurung",    "Kalimati",           "Bhaktapur Durbar",    "2025-06-13", "09:30 AM", "NPR 300", "Upcoming"),
-    UserBooking("4", "Dipak Rai",      "Maharajgunj",        "Kirtipur",            "2025-06-14", "11:00 AM", "NPR 220", "Upcoming"),
-    UserBooking("5", "Anita Shrestha", "Lazimpat",           "Swayambhunath",       "2025-06-05", "07:30 AM", "NPR 150", "Cancelled"),
+    UserBooking("1", "Rajesh Hamal",   "Thamel, Kathmandu", "Patan Durbar Square", "2025-06-10", "08:00 AM", "NPR 250", "Completed"),
+    UserBooking("2", "Bikash Tamang",  "New Baneshwor",     "Boudhanath Stupa",    "2025-06-11", "10:00 AM", "NPR 180", "Completed"),
+    UserBooking("3", "Sita Gurung",    "Kalimati",          "Bhaktapur Durbar",    "2025-06-13", "09:30 AM", "NPR 300", "Upcoming"),
+    UserBooking("4", "Dipak Rai",      "Maharajgunj",       "Kirtipur",            "2025-06-14", "11:00 AM", "NPR 220", "Upcoming"),
+    UserBooking("5", "Anita Shrestha", "Lazimpat",          "Swayambhunath",       "2025-06-05", "07:30 AM", "NPR 150", "Cancelled"),
 )
 
 @Composable
 fun BookingsSection() {
     var selectedFilter by remember { mutableStateOf("All") }
     val filters = listOf("All", "Upcoming", "Completed", "Cancelled")
-
-    val displayList = myBookings.filter {
-        selectedFilter == "All" || it.status == selectedFilter
-    }
+    val displayList = myBookings.filter { selectedFilter == "All" || it.status == selectedFilter }
 
     Column(
         modifier = Modifier
@@ -51,13 +48,11 @@ fun BookingsSection() {
             .background(SurfaceVariant)
             .padding(16.dp)
     ) {
-        // Header
-        Text(text = "My Bookings", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-        Text(text = "Your ride booking history", fontSize = 13.sp, color = TextSecondary)
+        Text("My Bookings", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+        Text("Your ride booking history", fontSize = 13.sp, color = TextSecondary)
+        Spacer(Modifier.height(14.dp))
 
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Summary strip
+        // Summary banner — now uses red primary color
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
@@ -68,14 +63,14 @@ fun BookingsSection() {
                 modifier = Modifier.fillMaxWidth().padding(20.dp),
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
-                MyBookingSummary("5",  "Total")
-                MyBookingSummary("2",  "Upcoming")
-                MyBookingSummary("2",  "Completed")
-                MyBookingSummary("1",  "Cancelled")
+                MyBookingSummary("5", "Total")
+                MyBookingSummary("2", "Upcoming")
+                MyBookingSummary("2", "Completed")
+                MyBookingSummary("1", "Cancelled")
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(Modifier.height(14.dp))
 
         // Filter chips
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -85,11 +80,7 @@ fun BookingsSection() {
                     selected = isSelected,
                     onClick = { selectedFilter = filter },
                     label = {
-                        Text(
-                            filter,
-                            fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                        )
+                        Text(filter, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
                     },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = PrimaryColor,
@@ -101,19 +92,19 @@ fun BookingsSection() {
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(Modifier.height(12.dp))
 
         if (displayList.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.EventBusy, null, tint = UnselectedNavItem, modifier = Modifier.size(48.dp))
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text("No bookings found", color = TextSecondary, fontSize = 15.sp)
                 }
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(displayList) { booking -> MyBookingCard(booking) }
+                items(displayList) { MyBookingCard(it) }
             }
         }
     }
@@ -123,16 +114,16 @@ fun BookingsSection() {
 fun MyBookingSummary(count: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(count, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = CardBackground)
-        Text(label, fontSize = 11.sp, color = CardBackground.copy(alpha = 0.8f))
+        Text(label, fontSize = 11.sp, color = CardBackground.copy(alpha = 0.85f))
     }
 }
 
 @Composable
 fun MyBookingCard(booking: UserBooking) {
     val statusColor = when (booking.status) {
-        "Completed" -> AccentGreen
-        "Upcoming"  -> AccentBlue
-        "Cancelled" -> AccentRed
+        "Completed" -> AccentGreen       // Green for completed
+        "Upcoming"  -> AccentBrightBlue  // Bright Blue for upcoming
+        "Cancelled" -> AccentRed         // Red for cancelled
         else        -> TextSecondary
     }
     val statusIcon = when (booking.status) {
@@ -149,8 +140,6 @@ fun MyBookingCard(booking: UserBooking) {
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-
-            // Top row — rider + status
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -165,13 +154,12 @@ fun MyBookingCard(booking: UserBooking) {
                     ) {
                         Icon(Icons.Default.Person, null, tint = PrimaryColor, modifier = Modifier.size(20.dp))
                     }
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(Modifier.width(10.dp))
                     Column {
                         Text(booking.riderName, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextPrimary)
                         Text("Booking #${booking.id}", fontSize = 12.sp, color = TextSecondary)
                     }
                 }
-
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -179,36 +167,30 @@ fun MyBookingCard(booking: UserBooking) {
                         .padding(horizontal = 10.dp, vertical = 5.dp)
                 ) {
                     Icon(statusIcon, null, tint = statusColor, modifier = Modifier.size(13.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(Modifier.width(4.dp))
                     Text(booking.status, fontSize = 12.sp, color = statusColor, fontWeight = FontWeight.SemiBold)
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
             HorizontalDivider(color = DividerColor)
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
             // From → To
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.LocationOn, null, tint = AccentGreen, modifier = Modifier.size(15.dp))
-                Spacer(modifier = Modifier.width(6.dp))
+                Icon(Icons.Default.LocationOn, null, tint = PrimaryColor, modifier = Modifier.size(15.dp))
+                Spacer(Modifier.width(6.dp))
                 Text(booking.from, fontSize = 13.sp, color = TextPrimary)
             }
-            Spacer(modifier = Modifier.height(2.dp))
-            Row {
-                Spacer(modifier = Modifier.width(7.dp))
-                Box(modifier = Modifier.width(2.dp).height(14.dp).background(DividerColor))
-            }
-            Spacer(modifier = Modifier.height(2.dp))
+            Row { Spacer(Modifier.width(7.dp)); Box(Modifier.width(2.dp).height(14.dp).background(DividerColor)) }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.LocationOn, null, tint = AccentRed, modifier = Modifier.size(15.dp))
-                Spacer(modifier = Modifier.width(6.dp))
+                Icon(Icons.Default.LocationOn, null, tint = AccentDarkBlue, modifier = Modifier.size(15.dp))
+                Spacer(Modifier.width(6.dp))
                 Text(booking.to, fontSize = 13.sp, color = TextPrimary)
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
-            // Date, time, price chips
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
