@@ -18,16 +18,18 @@ import androidx.navigation.NavHostController
 import com.example.liftnepal.presentation.components.BottomNavItem
 import com.example.liftnepal.presentation.dashboard.sections.*
 import com.example.liftnepal.presentation.viewmodel.AuthViewModel
+import com.example.liftnepal.presentation.viewmodel.RideViewModel
 import com.example.liftnepal.ui.theme.*
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun RiderDashboard(
     navController: NavHostController,
-    viewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    rideViewModel: RideViewModel  // ✅ Add RideViewModel parameter
 ) {
     var currentRoute by remember { mutableStateOf("add_ride") }
-    val currentUser = viewModel.currentUser
+    val currentUser = authViewModel.currentUser
 
     val bottomNavItems = listOf(
         BottomNavItem("Add Ride",    Icons.Default.Add,        "add_ride"),
@@ -65,7 +67,10 @@ fun RiderDashboard(
                 label = "rider_section"
             ) { route ->
                 when (route) {
-                    "add_ride"     -> AddRideSection()
+                    "add_ride"     -> AddRideSection(
+                        authViewModel = authViewModel,
+                        rideViewModel = rideViewModel
+                    )
                     "ride_history" -> RideHistorySection()
                     "rider_issues" -> RiderIssueSection()
                     "rider_menu"   -> RiderMenuSection(
@@ -77,7 +82,7 @@ fun RiderDashboard(
                             }
                         },
                         onLogout = {
-                            viewModel.logout()
+                            authViewModel.logout()
                             navController.navigate("login") {
                                 popUpTo("rider_dashboard") { inclusive = true }
                             }

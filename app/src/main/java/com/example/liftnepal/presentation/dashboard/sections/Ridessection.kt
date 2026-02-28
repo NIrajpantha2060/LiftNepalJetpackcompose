@@ -1,6 +1,7 @@
 package com.example.liftnepal.presentation.dashboard.sections
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,165 +13,512 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
+import com.example.liftnepal.data.model.Ride
+import com.example.liftnepal.data.utils.Result
+import com.example.liftnepal.presentation.viewmodel.RideViewModel
 import com.example.liftnepal.ui.theme.*
-
-data class AvailableRide(
-    val id: String,
-    val riderName: String,
-    val from: String,
-    val to: String,
-    val date: String,
-    val time: String,
-    val price: String,
-    val seats: Int,
-    val rating: String
-)
-
-private val availableRides = listOf(
-    AvailableRide("1", "Rajesh Hamal",   "Thamel, Kathmandu",  "Patan Durbar Square", "2025-06-15", "08:00 AM", "NPR 250", 3, "4.8"),
-    AvailableRide("2", "Sita Gurung",    "Kalimati",           "Bhaktapur Durbar",    "2025-06-15", "09:30 AM", "NPR 300", 2, "4.6"),
-    AvailableRide("3", "Bikash Tamang",  "New Baneshwor",      "Boudhanath Stupa",    "2025-06-15", "10:00 AM", "NPR 180", 4, "4.9"),
-    AvailableRide("4", "Anita Shrestha", "Lazimpat",           "Swayambhunath",       "2025-06-16", "07:30 AM", "NPR 150", 2, "4.7"),
-    AvailableRide("5", "Dipak Rai",      "Maharajgunj",        "Kirtipur",            "2025-06-16", "11:00 AM", "NPR 220", 3, "4.5"),
-    AvailableRide("6", "Priya Lama",     "Chabahil",           "Balaju",              "2025-06-17", "02:00 PM", "NPR 130", 1, "4.8"),
-)
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
-fun RidesSection() {
-    var showBookDialog by remember { mutableStateOf(false) }
-    var selectedRide by remember { mutableStateOf<AvailableRide?>(null) }
-    var showDetailsDialog by remember { mutableStateOf(false) }
+fun RidesSection(rideViewModel: RideViewModel) {
+    val allRidesState by rideViewModel.allRidesState.collectAsState()
+
+    // Fetch rides on first composition
+    LaunchedEffect(Unit) {
+        rideViewModel.fetchAllActiveRides()
+    }
+
+    // State for ride details dialog
+    var selectedRide by remember { mutableStateOf<Ride?>(null) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(SurfaceVariant)
-            .padding(16.dp)
     ) {
-        Text("Available Rides", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-        Text("Find and book a ride near you", fontSize = 13.sp, color = TextSecondary)
-        Spacer(Modifier.height(14.dp))
-
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(availableRides) { ride ->
-                AvailableRideCard(
-                    ride = ride,
-                    onBook = { selectedRide = ride; showBookDialog = true },
-                    onViewDetails = { selectedRide = ride; showDetailsDialog = true }
-                )
+        when (allRidesState) {
+            is Result.Loading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = PrimaryColor)
+                }
             }
+
+            is Result.Success -> {
+                val rides = (allRidesState as Result.Success<List<Ride>>).data
+
+                if (rides.isEmpty()) {
+                    // Empty state
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.DirectionsCar,
+                                null,
+                                tint = TextSecondary,
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Text(
+                                "No rides available",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                "Check back later for new rides",
+                                fontSize = 14.sp,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(rides) { ride ->
+                            RideCard(
+                                ride = ride,
+                                onClick = { selectedRide = ride }
+                            )
+                        }
+                    }
+                }
+            }
+
+            is Result.Error -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Error,
+                            null,
+                            tint = AccentRed,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Text(
+                            (allRidesState as Result.Error).message,
+                            fontSize = 14.sp,
+                            color = TextSecondary
+                        )
+                        Button(
+                            onClick = { rideViewModel.fetchAllActiveRides() },
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
+                        ) {
+                            Text("Retry")
+                        }
+                    }
+                }
+            }
+
+            else -> {}
         }
     }
 
-    if (showBookDialog && selectedRide != null) {
-        BookRideDialog(
+    // Ride Details Dialog
+    if (selectedRide != null) {
+        RideDetailsDialog(
             ride = selectedRide!!,
-            onDismiss = { showBookDialog = false },
-            onConfirm = { showBookDialog = false }
+            onDismiss = { selectedRide = null }
         )
-    }
-    if (showDetailsDialog && selectedRide != null) {
-        RideDetailsDialog(ride = selectedRide!!, onDismiss = { showDetailsDialog = false })
     }
 }
 
 @Composable
-fun AvailableRideCard(ride: AvailableRide, onBook: () -> Unit, onViewDetails: () -> Unit) {
+fun RideCard(ride: Ride, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardBackground),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Rider info + price
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Rider info row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Rider avatar
                     Box(
                         modifier = Modifier
-                            .size(42.dp)
-                            .background(PrimaryColor.copy(alpha = 0.12f), CircleShape),
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(PrimaryColor),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Person, null, tint = PrimaryColor, modifier = Modifier.size(22.dp))
+                        if (ride.riderPhotoUrl.isNotEmpty()) {
+                            AsyncImage(
+                                model = ride.riderPhotoUrl,
+                                contentDescription = "Rider Photo",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Text(
+                                ride.riderName.firstOrNull()?.toString() ?: "R",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
                     }
-                    Spacer(Modifier.width(10.dp))
+
                     Column {
-                        Text(ride.riderName, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextPrimary)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Star, null, tint = AccentOrange, modifier = Modifier.size(13.dp))
-                            Spacer(Modifier.width(2.dp))
-                            Text(ride.rating, fontSize = 12.sp, color = TextSecondary)
+                        Text(
+                            ride.riderName,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            ride.riderPhone,
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+
+                // Cost badge
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = PrimaryColor.copy(alpha = 0.1f)
+                ) {
+                    Text(
+                        "NPR ${ride.cost}",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PrimaryColor
+                    )
+                }
+            }
+
+            HorizontalDivider(color = DividerColor, thickness = 0.8.dp)
+
+            // Route info
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.MyLocation,
+                    null,
+                    tint = AccentGreen,
+                    modifier = Modifier.size(20.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("From", fontSize = 11.sp, color = TextSecondary)
+                    Text(
+                        ride.startLocation,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.LocationOn,
+                    null,
+                    tint = AccentRed,
+                    modifier = Modifier.size(20.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("To", fontSize = 11.sp, color = TextSecondary)
+                    Text(
+                        ride.destination,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary
+                    )
+                }
+            }
+
+            // Vehicle info
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.DirectionsCar,
+                        null,
+                        tint = TextSecondary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        ride.vehicleNumber,
+                        fontSize = 13.sp,
+                        color = TextSecondary
+                    )
+                }
+
+                TextButton(onClick = onClick) {
+                    Text("View Details", fontSize = 12.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RideDetailsDialog(ride: Ride, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = CardBackground)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Ride Details",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, null, tint = TextSecondary)
+                    }
+                }
+
+                HorizontalDivider(color = DividerColor, thickness = 0.8.dp)
+
+                // Rider Info Section
+                Text(
+                    "Rider Information",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(CircleShape)
+                            .background(PrimaryColor),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (ride.riderPhotoUrl.isNotEmpty()) {
+                            AsyncImage(
+                                model = ride.riderPhotoUrl,
+                                contentDescription = "Rider Photo",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Text(
+                                ride.riderName.firstOrNull()?.toString() ?: "R",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+
+                    Column {
+                        Text(
+                            ride.riderName,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Phone,
+                                null,
+                                tint = TextSecondary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                ride.riderPhone,
+                                fontSize = 13.sp,
+                                color = TextSecondary
+                            )
                         }
                     }
                 }
-                Box(
-                    modifier = Modifier
-                        .background(PrimaryColor, RoundedCornerShape(12.dp))
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Text(ride.price, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CardBackground)
+
+                HorizontalDivider(color = DividerColor, thickness = 0.8.dp)
+
+                // Vehicle Section
+                Text(
+                    "Vehicle Information",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+
+                // Vehicle photo
+                if (ride.vehiclePhotoUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = ride.vehiclePhotoUrl,
+                        contentDescription = "Vehicle Photo",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop
+                    )
                 }
-            }
 
-            Spacer(Modifier.height(12.dp))
-            HorizontalDivider(color = DividerColor)
-            Spacer(Modifier.height(12.dp))
-
-            // From → To
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.LocationOn, null, tint = PrimaryColor, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(ride.from, fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
-            }
-            Row { Spacer(Modifier.width(7.dp)); Box(Modifier.width(2.dp).height(14.dp).background(DividerColor)) }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.LocationOn, null, tint = AccentDarkBlue, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(ride.to, fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            // Chips
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                RideInfoChip(Icons.Default.DateRange, ride.date)
-                RideInfoChip(Icons.Default.AccessTime, ride.time)
-                RideInfoChip(Icons.Default.EventSeat, "${ride.seats} seats")
-            }
-
-            Spacer(Modifier.height(14.dp))
-
-            // Action buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onViewDetails,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryColor)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("View Details", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Icon(
+                        Icons.Default.DirectionsCar,
+                        null,
+                        tint = PrimaryColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        ride.vehicleNumber,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary
+                    )
                 }
-                Button(
-                    onClick = onBook,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
+
+                HorizontalDivider(color = DividerColor, thickness = 0.8.dp)
+
+                // Route Section
+                Text(
+                    "Route Details",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+
+                DetailRow(
+                    icon = Icons.Default.MyLocation,
+                    iconTint = AccentGreen,
+                    label = "From",
+                    value = ride.startLocation
+                )
+
+                DetailRow(
+                    icon = Icons.Default.LocationOn,
+                    iconTint = AccentRed,
+                    label = "To",
+                    value = ride.destination
+                )
+
+                DetailRow(
+                    icon = Icons.Default.Money,
+                    iconTint = PrimaryColor,
+                    label = "Cost",
+                    value = "NPR ${ride.cost}"
+                )
+
+                // Remarks if available
+                if (ride.remarks.isNotEmpty()) {
+                    HorizontalDivider(color = DividerColor, thickness = 0.8.dp)
+                    Text(
+                        "Additional Information",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        ride.remarks,
+                        fontSize = 13.sp,
+                        color = TextSecondary,
+                        lineHeight = 18.sp
+                    )
+                }
+
+                // Posted time
+                Text(
+                    "Posted ${formatTimestamp(ride.createdAt)}",
+                    fontSize = 11.sp,
+                    color = TextSecondary,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+
+                // Action buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Book Ride", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Close")
+                    }
+                    Button(
+                        onClick = { /* TODO: Implement booking in next phase */ },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
+                    ) {
+                        Text("Book Ride")
+                    }
                 }
             }
         }
@@ -178,90 +526,46 @@ fun AvailableRideCard(ride: AvailableRide, onBook: () -> Unit, onViewDetails: ()
 }
 
 @Composable
-fun RideInfoChip(icon: ImageVector, label: String) {
+fun DetailRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconTint: Color,
+    label: String,
+    value: String
+) {
     Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .background(SurfaceVariant, RoundedCornerShape(8.dp))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, null, tint = AccentDarkBlue, modifier = Modifier.size(13.dp))
-        Spacer(Modifier.width(4.dp))
-        Text(label, fontSize = 11.sp, color = TextSecondary)
+        Icon(
+            icon,
+            null,
+            tint = iconTint,
+            modifier = Modifier.size(20.dp)
+        )
+        Column {
+            Text(label, fontSize = 11.sp, color = TextSecondary)
+            Text(
+                value,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = TextPrimary
+            )
+        }
     }
 }
 
-@Composable
-fun BookRideDialog(ride: AvailableRide, onDismiss: () -> Unit, onConfirm: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(24.dp),
-        containerColor = CardBackground,
-        title = { Text("Confirm Booking", fontWeight = FontWeight.Bold, color = TextPrimary) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                RideDetailRow("Rider",  ride.riderName)
-                RideDetailRow("From",   ride.from)
-                RideDetailRow("To",     ride.to)
-                RideDetailRow("Date",   ride.date)
-                RideDetailRow("Time",   ride.time)
-                RideDetailRow("Price",  ride.price)
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
-            ) { Text("Confirm", color = CardBackground) }
-        },
-        dismissButton = {
-            OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(12.dp)) {
-                Text("Cancel", color = TextSecondary)
-            }
-        }
-    )
-}
+fun formatTimestamp(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
 
-@Composable
-fun RideDetailsDialog(ride: AvailableRide, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(24.dp),
-        containerColor = CardBackground,
-        title = { Text("Ride Details", fontWeight = FontWeight.Bold, color = TextPrimary) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                RideDetailRow("Rider Name",       ride.riderName)
-                RideDetailRow("Rating",           "⭐ ${ride.rating}")
-                RideDetailRow("From",             ride.from)
-                RideDetailRow("To",               ride.to)
-                RideDetailRow("Date",             ride.date)
-                RideDetailRow("Time",             ride.time)
-                RideDetailRow("Price",            ride.price)
-                RideDetailRow("Available Seats",  "${ride.seats}")
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
-            ) { Text("Close", color = CardBackground) }
+    return when {
+        diff < 60000 -> "just now"
+        diff < 3600000 -> "${diff / 60000} minutes ago"
+        diff < 86400000 -> "${diff / 3600000} hours ago"
+        diff < 604800000 -> "${diff / 86400000} days ago"
+        else -> {
+            val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+            sdf.format(Date(timestamp))
         }
-    )
-}
-
-@Composable
-fun RideDetailRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(SurfaceVariant, RoundedCornerShape(10.dp))
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, fontSize = 13.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
-        Text(value, fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.SemiBold)
     }
 }

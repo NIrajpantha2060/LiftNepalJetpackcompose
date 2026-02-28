@@ -205,3 +205,17 @@ fun MyBookingCard(booking: UserBooking) {
         }
     }
 }
+
+@Composable
+fun RideInfoChip(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .background(SurfaceVariant, RoundedCornerShape(10.dp))
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+    ) {
+        Icon(icon, null, tint = PrimaryColor, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(label, fontSize = 12.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
+    }
+}

@@ -25,23 +25,25 @@ import com.example.liftnepal.presentation.components.BottomNavBar
 import com.example.liftnepal.presentation.components.BottomNavItem
 import com.example.liftnepal.presentation.dashboard.sections.*
 import com.example.liftnepal.presentation.viewmodel.AuthViewModel
+import com.example.liftnepal.presentation.viewmodel.RideViewModel
 import com.example.liftnepal.ui.theme.*
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun DashboardScreen(
     navController: NavHostController,
-    viewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    rideViewModel: RideViewModel  // ✅ Add RideViewModel parameter
 ) {
     var currentRoute by remember { mutableStateOf("rides") }
 
     // ✅ Use userData from Firebase Realtime DB (has displayName)
     // NOT currentUser from Firebase Auth (displayName is empty there)
-    val currentUserDataState by viewModel.currentUserData.collectAsState()
+    val currentUserDataState by authViewModel.currentUserData.collectAsState()
     val userData = (currentUserDataState as? Result.Success)?.data
 
     LaunchedEffect(Unit) {
-        viewModel.fetchCurrentUserData()
+        authViewModel.fetchCurrentUserData()
     }
 
     // Use userData.displayName — falls back to email initial if still loading
@@ -86,16 +88,16 @@ fun DashboardScreen(
                 label = "dashboard_section"
             ) { route ->
                 when (route) {
-                    "rides"    -> RidesSection()
+                    "rides"    -> RidesSection(rideViewModel = rideViewModel)
                     "bookings" -> BookingsSection()
                     "issues"   -> IssueSection()
                     "menu"     -> MenuSection(
                         userName        = displayName,   // ✅ from DB
                         userEmail       = userEmail,     // ✅ from DB
                         userData        = userData,
-                        viewModel       = viewModel,
+                        viewModel       = authViewModel,
                         onLogout        = {
-                            viewModel.logout()
+                            authViewModel.logout()
                             navController.navigate("login") {
                                 popUpTo("dashboard") { inclusive = true }
                             }
