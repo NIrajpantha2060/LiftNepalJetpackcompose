@@ -51,6 +51,7 @@ fun MenuSection(
     var showProfileDialog by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(false) }
     var isUploadingPhoto by remember { mutableStateOf(false) }
+    var showPhotoOptions by remember { mutableStateOf(false) }
 
     // Observe verification status
     val myVerificationState by viewModel.myVerification.collectAsState()
@@ -137,18 +138,43 @@ fun MenuSection(
                     // Camera button to change photo
                     Box(
                         modifier = Modifier
-                            .size(26.dp)
+                            .size(28.dp)
                             .clip(CircleShape)
                             .background(PrimaryColor)
-                            .clickable { photoPickerLauncher.launch("image/*") },
+                            .clickable { showPhotoOptions = true },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Default.CameraAlt,
                             contentDescription = "Change Photo",
                             tint = Color.White,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(15.dp)
                         )
+
+                        DropdownMenu(
+                            expanded = showPhotoOptions,
+                            onDismissRequest = { showPhotoOptions = false },
+                            modifier = Modifier.background(CardBackground)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Upload New Photo", fontSize = 14.sp) },
+                                leadingIcon = { Icon(Icons.Default.PhotoLibrary, null, modifier = Modifier.size(18.dp)) },
+                                onClick = {
+                                    showPhotoOptions = false
+                                    photoPickerLauncher.launch("image/*")
+                                }
+                            )
+                            if (!userData?.profilePhotoUrl.isNullOrEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text("Remove Photo", color = AccentRed, fontSize = 14.sp) },
+                                    leadingIcon = { Icon(Icons.Default.Delete, null, tint = AccentRed, modifier = Modifier.size(18.dp)) },
+                                    onClick = {
+                                        showPhotoOptions = false
+                                        viewModel.updateProfilePhoto("")
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -212,11 +238,19 @@ fun MenuSection(
                     onClick = { showChangePasswordDialog = true }
                 )
                 RowDivider()
-                // Update Profile Picture row — triggers photo picker directly
+                // Update Profile Picture row
                 MenuRow(
                     Icons.Default.AccountCircle, AccentDarkBlue, "Update Profile Picture", "Change your avatar",
                     onClick = { photoPickerLauncher.launch("image/*") }
                 )
+                
+                if (!userData?.profilePhotoUrl.isNullOrEmpty()) {
+                    RowDivider()
+                    MenuRow(
+                        Icons.Default.DeleteForever, AccentRed, "Remove Current Photo", "Delete your avatar",
+                        onClick = { viewModel.updateProfilePhoto("") }
+                    )
+                }
             }
         }
 

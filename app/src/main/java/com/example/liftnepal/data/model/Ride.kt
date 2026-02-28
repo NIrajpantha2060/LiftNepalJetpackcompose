@@ -1,29 +1,26 @@
 package com.example.liftnepal.data.model
 
 data class Ride(
-    val rideId: String = "",                    // Unique ride ID
-    val riderId: String = "",                   // Foreign key to User (rider who created this ride)
-    val riderName: String = "",                 // Denormalized for quick display
-    val riderPhone: String = "",                // Denormalized for contact
-    val riderPhotoUrl: String = "",             // Denormalized rider profile photo
+    val rideId: String = "",
+    val riderId: String = "",
+    val riderName: String = "",
+    val riderPhone: String = "",
+    val riderPhotoUrl: String = "",
 
-    // Vehicle details
-    val vehicleNumber: String = "",             // e.g. "BA 1 PA 1234"
-    val vehiclePhotoUrl: String = "",           // Cloudinary URL of vehicle photo
+    val vehicleNumber: String = "",
+    val vehiclePhotoUrl: String = "",
 
-    // Route details
-    val startLocation: String = "",             // Starting point
-    val destination: String = "",               // End point
+    val startLocation: String = "",
+    val destination: String = "",
+    val pickupLocation: String = "",
+    val rideTime: String = "",              // ← NEW: e.g. "08:00 PM"
 
-    // Additional info
-    val remarks: String = "",                   // Description, amenities, etc.
-    val cost: String = "",                      // Ride cost
+    val remarks: String = "",
+    val cost: String = "",
 
-    // Status
-    val status: String = "active",              // active, completed, cancelled
+    val status: String = "active",
     val createdAt: Long = System.currentTimeMillis(),
 
-    // Booking info (for future use)
-    val availableSeats: Int = 1,                // Available seats
-    val bookedBy: String = ""                   // UID of user who booked (empty if not booked)
+    val availableSeats: Int = 1,
+    val bookedBy: String = ""
 )
