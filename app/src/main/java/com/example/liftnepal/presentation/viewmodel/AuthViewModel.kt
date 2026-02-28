@@ -2,6 +2,7 @@ package com.example.liftnepal.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.liftnepal.data.model.User
 import com.example.liftnepal.data.repository.AuthRepository
 import com.example.liftnepal.data.utils.Result
 import com.google.firebase.auth.FirebaseUser
@@ -24,6 +25,14 @@ class AuthViewModel : ViewModel() {
     private val _resetState = MutableStateFlow<Result<Boolean>?>(null)
     val resetState: StateFlow<Result<Boolean>?> = _resetState
 
+    // Admin: Users list state
+    private val _usersList = MutableStateFlow<Result<List<User>>?>(null)
+    val usersList: StateFlow<Result<List<User>>?> = _usersList
+
+    // Admin: Delete user state
+    private val _deleteUserState = MutableStateFlow<Result<Boolean>?>(null)
+    val deleteUserState: StateFlow<Result<Boolean>?> = _deleteUserState
+
     val currentUser: FirebaseUser?
         get() = repository.currentUser
 
@@ -41,7 +50,24 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    // Add this to your AuthViewModel.kt
+    fun fetchAllUsers() {
+        viewModelScope.launch {
+            _usersList.value = Result.Loading
+            _usersList.value = repository.getAllUsers()
+        }
+    }
+
+    fun deleteUser(userId: String) {
+        viewModelScope.launch {
+            _deleteUserState.value = Result.Loading
+            val result = repository.deleteUser(userId)
+            _deleteUserState.value = result
+            if (result is Result.Success) {
+                fetchAllUsers() // Refresh list after deletion
+            }
+        }
+    }
+
     fun logout() {
         repository.logout()
         clearLoginState()
@@ -59,4 +85,5 @@ class AuthViewModel : ViewModel() {
     fun clearLoginState() { _loginState.value = null }
     fun clearSignupState() { _signupState.value = null }
     fun clearResetState() { _resetState.value = null }
+    fun clearDeleteUserState() { _deleteUserState.value = null }
 }

@@ -2,6 +2,7 @@ package com.example.liftnepal.presentation.dashboard.sections
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,7 +20,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.liftnepal.data.model.User
+import com.example.liftnepal.data.utils.Result
+import com.example.liftnepal.presentation.viewmodel.AuthViewModel
 import com.example.liftnepal.ui.theme.*
+import java.text.SimpleDateFormat
+import java.util.*
 
 // ─────────────────────────────────────────────────────────────
 // Shared Admin UI Components
@@ -86,177 +92,184 @@ fun StatusBadge(label: String, color: Color) {
     }
 }
 
-@Composable
-fun SmallActionButton(label: String, color: Color) {
-    Box(
-        modifier = Modifier
-            .size(28.dp)
-            .clip(CircleShape)
-            .background(color.copy(alpha = 0.15f))
-            .border(0.8.dp, color.copy(alpha = 0.4f), CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(label, fontSize = 13.sp, color = color, fontWeight = FontWeight.Bold)
-    }
-}
-
 // ─────────────────────────────────────────────────────────────
 // USERS SECTION
 // ─────────────────────────────────────────────────────────────
 
-data class AdminUser(
-    val name: String,
-    val email: String,
-    val phone: String,
-    val status: String,
-    val joinDate: String
-)
-
-val sampleUsers = listOf(
-    AdminUser("Rohan Sharma",  "rohan@gmail.com",  "+977 9841000001", "Active",   "Jan 12, 2025"),
-    AdminUser("Priya Thapa",   "priya@gmail.com",  "+977 9841000002", "Active",   "Jan 18, 2025"),
-    AdminUser("Suman Rai",     "suman@gmail.com",  "+977 9841000003", "Inactive", "Feb 02, 2025"),
-    AdminUser("Anisha Gurung", "anisha@gmail.com", "+977 9841000004", "Active",   "Feb 14, 2025"),
-    AdminUser("Bikash Pandey", "bikash@gmail.com", "+977 9841000005", "Banned",   "Mar 01, 2025"),
-)
-
 @Composable
-fun AdminUsersSection() {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AdminBg),
-        contentPadding = PaddingValues(bottom = 16.dp)
-    ) {
-        item { AdminSectionHeader("All Users", sampleUsers.size, Icons.Default.People) }
-        items(sampleUsers) { user ->
-            AdminCardContainer {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+fun AdminUsersSection(viewModel: AuthViewModel) {
+    val usersState by viewModel.usersList.collectAsState()
+    var selectedUser by remember { mutableStateOf<User?>(null) }
+    var userToDelete by remember { mutableStateOf<User?>(null) }
+
+    LaunchedEffect(Unit) {
+        viewModel.fetchAllUsers()
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (val state = usersState) {
+            is Result.Loading -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = AdminAccent
+                )
+            }
+            is Result.Error -> {
+                Text(
+                    text = state.message,
+                    color = AdminAccent,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+            is Result.Success -> {
+                val users = state.data
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(AdminBg),
+                    contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(AdminAccentSoft),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                user.name.first().toString(),
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = AdminAccent
-                            )
-                        }
-                        Column {
-                            Text(user.name,  fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = AdminTextPrimary)
-                            Text(user.email, fontSize = 11.sp, color = AdminTextSecondary)
-                            Text(user.phone, fontSize = 11.sp, color = AdminTextMuted)
-                        }
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        StatusBadge(
-                            label = user.status,
-                            color = when (user.status) {
-                                "Active"   -> Color(0xFF27AE60)
-                                "Inactive" -> Color(0xFFF39C12)
-                                "Banned"   -> AdminAccent
-                                else       -> AdminTextSecondary
+                    item { AdminSectionHeader("All Users", users.size, Icons.Default.People) }
+                    items(users) { user ->
+                        AdminCardContainer {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { selectedUser = user },
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(CircleShape)
+                                            .background(AdminAccentSoft),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            (user.displayName.ifEmpty { "U" }).first().toString().uppercase(),
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = AdminAccent
+                                        )
+                                    }
+                                    Column {
+                                        Text(user.displayName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = AdminTextPrimary)
+                                        Text(user.email, fontSize = 11.sp, color = AdminTextSecondary)
+                                    }
+                                }
+                                IconButton(onClick = { userToDelete = user }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = AdminAccent, modifier = Modifier.size(20.dp))
+                                }
                             }
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(user.joinDate, fontSize = 10.sp, color = AdminTextMuted)
+                        }
                     }
                 }
             }
+            else -> {}
+        }
+
+        // Details Dialog
+        selectedUser?.let { user ->
+            UserDetailDialog(
+                user = user,
+                onDismiss = { selectedUser = null }
+            )
+        }
+
+        // Delete Confirmation Dialog
+        userToDelete?.let { user ->
+            DeleteConfirmDialog(
+                userName = user.displayName,
+                onConfirm = {
+                    viewModel.deleteUser(user.uid)
+                    userToDelete = null
+                },
+                onDismiss = { userToDelete = null }
+            )
         }
     }
+}
+
+@Composable
+fun UserDetailDialog(user: User, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = AdminCard,
+        shape = RoundedCornerShape(24.dp),
+        title = {
+            Text("User Details", fontWeight = FontWeight.Bold, color = AdminTextPrimary)
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                DetailItem("User ID", user.uid)
+                DetailItem("Username", user.displayName)
+                DetailItem("Email", user.email)
+                DetailItem("Phone", user.phoneNumber)
+                DetailItem("Joined", SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(user.createdAt)))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close", color = AdminAccent, fontWeight = FontWeight.Bold)
+            }
+        }
+    )
+}
+
+@Composable
+fun DetailItem(label: String, value: String) {
+    Column {
+        Text(label, fontSize = 11.sp, color = AdminTextMuted, fontWeight = FontWeight.SemiBold)
+        Text(value, fontSize = 14.sp, color = AdminTextPrimary)
+    }
+}
+
+@Composable
+fun DeleteConfirmDialog(userName: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = AdminCard,
+        shape = RoundedCornerShape(20.dp),
+        title = {
+            Text("Delete User", fontWeight = FontWeight.Bold, color = AdminTextPrimary)
+        },
+        text = {
+            Text("Are you sure you want to delete $userName? This action cannot be undone.", color = AdminTextSecondary)
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = AdminAccent),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("Delete", color = Color.White)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = AdminTextSecondary)
+            }
+        }
+    )
 }
 
 // ─────────────────────────────────────────────────────────────
 // RIDES SECTION
 // ─────────────────────────────────────────────────────────────
 
-data class AdminRide(
-    val rideId: String,
-    val rider: String,
-    val from: String,
-    val to: String,
-    val date: String,
-    val status: String,
-    val fare: String
-)
-
-val sampleRides = listOf(
-    AdminRide("RD-001", "Rohan Sharma",  "Thamel",      "Patan",         "Mar 10, 2025", "Completed", "Rs 250"),
-    AdminRide("RD-002", "Priya Thapa",   "Baneshwor",   "Kalanki",       "Mar 12, 2025", "Completed", "Rs 180"),
-    AdminRide("RD-003", "Suman Rai",     "Koteshwor",   "New Baneshwor", "Mar 15, 2025", "Cancelled", "Rs 0"),
-    AdminRide("RD-004", "Anisha Gurung", "Maharajgunj", "Lalitpur",      "Mar 20, 2025", "Ongoing",   "Rs 320"),
-    AdminRide("RD-005", "Bikash Pandey", "Gongabu",     "Chabahil",      "Mar 22, 2025", "Completed", "Rs 140"),
-)
-
 @Composable
 fun AdminRidesSection() {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AdminBg),
-        contentPadding = PaddingValues(bottom = 16.dp)
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        item { AdminSectionHeader("All Rides", sampleRides.size, Icons.Default.DirectionsCar) }
-        items(sampleRides) { ride ->
-            AdminCardContainer {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(ride.rideId, fontSize = 11.sp, color = AdminAccent, fontWeight = FontWeight.Bold)
-                            Text("·", color = AdminTextMuted)
-                            Text(ride.rider,  fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = AdminTextPrimary)
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(Icons.Default.LocationOn,  null, tint = AdminAccent,    modifier = Modifier.size(13.dp))
-                            Text(ride.from, fontSize = 12.sp, color = AdminTextSecondary)
-                            Icon(Icons.Default.ArrowForward, null, tint = AdminTextMuted, modifier = Modifier.size(12.dp))
-                            Text(ride.to,   fontSize = 12.sp, color = AdminTextSecondary)
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(ride.date, fontSize = 11.sp, color = AdminTextMuted)
-                    }
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        StatusBadge(
-                            label = ride.status,
-                            color = when (ride.status) {
-                                "Completed" -> Color(0xFF27AE60)
-                                "Ongoing"   -> Color(0xFF037DC0)
-                                "Cancelled" -> AdminAccent
-                                else        -> AdminTextSecondary
-                            }
-                        )
-                        Text(ride.fare, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = AdminTextPrimary)
-                    }
-                }
-            }
-        }
+        Text("Rides Management coming soon...", color = AdminTextSecondary)
     }
 }
 
@@ -264,79 +277,14 @@ fun AdminRidesSection() {
 // VERIFICATION SECTION
 // ─────────────────────────────────────────────────────────────
 
-data class VerificationRequest(
-    val name: String,
-    val docType: String,
-    val submitted: String,
-    val status: String
-)
-
-val sampleVerifications = listOf(
-    VerificationRequest("Rohan Sharma",  "Citizenship + License", "Mar 08, 2025", "Pending"),
-    VerificationRequest("Suman Rai",     "Citizenship",           "Mar 11, 2025", "Approved"),
-    VerificationRequest("Bikash Pandey", "License",               "Mar 14, 2025", "Rejected"),
-    VerificationRequest("Nita Karki",    "Citizenship + License", "Mar 18, 2025", "Pending"),
-    VerificationRequest("Dev Shrestha",  "Citizenship",           "Mar 21, 2025", "Pending"),
-)
-
 @Composable
 fun AdminVerificationSection() {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AdminBg),
-        contentPadding = PaddingValues(bottom = 16.dp)
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        item { AdminSectionHeader("Verification Requests", sampleVerifications.size, Icons.Default.VerifiedUser) }
-        items(sampleVerifications) { req ->
-            AdminCardContainer {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(AdminBg),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.Badge, null, tint = AdminAccent, modifier = Modifier.size(22.dp))
-                        }
-                        Column {
-                            Text(req.name,    fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = AdminTextPrimary)
-                            Text(req.docType, fontSize = 11.sp, color = AdminTextSecondary)
-                            Text("Submitted: ${req.submitted}", fontSize = 10.sp, color = AdminTextMuted)
-                        }
-                    }
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        StatusBadge(
-                            label = req.status,
-                            color = when (req.status) {
-                                "Approved" -> Color(0xFF27AE60)
-                                "Pending"  -> Color(0xFFF39C12)
-                                "Rejected" -> AdminAccent
-                                else       -> AdminTextSecondary
-                            }
-                        )
-                        if (req.status == "Pending") {
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                SmallActionButton("✓", Color(0xFF27AE60))
-                                SmallActionButton("✗", AdminAccent)
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        Text("Verification Center coming soon...", color = AdminTextSecondary)
     }
 }
 
@@ -344,82 +292,13 @@ fun AdminVerificationSection() {
 // ISSUES SECTION
 // ─────────────────────────────────────────────────────────────
 
-data class AdminIssue(
-    val issueId: String,
-    val reporter: String,
-    val subject: String,
-    val description: String,
-    val date: String,
-    val priority: String,
-    val status: String
-)
-
-val sampleIssues = listOf(
-    AdminIssue("IS-001", "Priya Thapa",   "Driver was rude",        "The driver was very rude during the trip.",    "Mar 09, 2025", "High",   "Open"),
-    AdminIssue("IS-002", "Rohan Sharma",  "App crashed",            "App crashes when I try to book a ride.",       "Mar 13, 2025", "Medium", "In Review"),
-    AdminIssue("IS-003", "Suman Rai",     "Wrong fare charged",     "I was charged Rs 100 extra for a short ride.", "Mar 16, 2025", "High",   "Resolved"),
-    AdminIssue("IS-004", "Anisha Gurung", "Ride cancelled unfairly","Driver cancelled without reason mid ride.",    "Mar 19, 2025", "Medium", "Open"),
-    AdminIssue("IS-005", "Dev Shrestha",  "Payment failed",         "Payment deducted but ride not confirmed.",     "Mar 22, 2025", "High",   "In Review"),
-)
-
 @Composable
 fun AdminIssuesSection() {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AdminBg),
-        contentPadding = PaddingValues(bottom = 16.dp)
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        item { AdminSectionHeader("Reported Issues", sampleIssues.size, Icons.Default.BugReport) }
-        items(sampleIssues) { issue ->
-            AdminCardContainer {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(issue.issueId,  fontSize = 11.sp, color = AdminAccent, fontWeight = FontWeight.Bold)
-                            Text("·", color = AdminTextMuted)
-                            Text(issue.reporter, fontSize = 12.sp, color = AdminTextSecondary)
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(issue.subject,     fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = AdminTextPrimary)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(issue.description, fontSize = 12.sp, color = AdminTextSecondary, maxLines = 2)
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(issue.date,        fontSize = 10.sp, color = AdminTextMuted)
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        StatusBadge(
-                            label = issue.priority,
-                            color = when (issue.priority) {
-                                "High"   -> AdminAccent
-                                "Medium" -> Color(0xFFF39C12)
-                                "Low"    -> Color(0xFF27AE60)
-                                else     -> AdminTextSecondary
-                            }
-                        )
-                        StatusBadge(
-                            label = issue.status,
-                            color = when (issue.status) {
-                                "Open"      -> Color(0xFF037DC0)
-                                "In Review" -> Color(0xFFF39C12)
-                                "Resolved"  -> Color(0xFF27AE60)
-                                else        -> AdminTextSecondary
-                            }
-                        )
-                    }
-                }
-            }
-        }
+        Text("Issues & Support coming soon...", color = AdminTextSecondary)
     }
 }

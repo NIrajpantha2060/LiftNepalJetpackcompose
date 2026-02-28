@@ -63,6 +63,31 @@ class AuthRepository {
         }
     }
 
+    suspend fun getAllUsers(): Result<List<User>> {
+        return try {
+            val snapshot = database.child("users").get().await()
+            val users = mutableListOf<User>()
+            snapshot.children.forEach { child ->
+                child.getValue(User::class.java)?.let { users.add(it) }
+            }
+            Result.Success(users)
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Failed to fetch users")
+        }
+    }
+
+    suspend fun deleteUser(userId: String): Result<Boolean> {
+        return try {
+            // Note: This only deletes from Realtime Database. 
+            // Deleting from Firebase Auth requires Admin SDK or a Cloud Function, 
+            // but for this MVP, we will just remove from DB.
+            database.child("users").child(userId).removeValue().await()
+            Result.Success(true)
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Failed to delete user")
+        }
+    }
+
     suspend fun sendPasswordReset(email: String): Result<Boolean> {
         return try {
             auth.sendPasswordResetEmail(email).await()
