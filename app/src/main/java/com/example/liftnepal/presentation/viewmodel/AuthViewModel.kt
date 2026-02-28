@@ -36,21 +36,21 @@ class AuthViewModel : ViewModel() {
     private val _currentUserData = MutableStateFlow<Result<User>?>(null)
     val currentUserData: StateFlow<Result<User>?> = _currentUserData
 
+    // Profile photo update state
+    private val _profilePhotoState = MutableStateFlow<Result<Boolean>?>(null)
+    val profilePhotoState: StateFlow<Result<Boolean>?> = _profilePhotoState
+
     // ─── Verifications Table States ───────────────────────────────
 
-    // Current user's own verification record
     private val _myVerification = MutableStateFlow<Result<Verification?>?>(null)
     val myVerification: StateFlow<Result<Verification?>?> = _myVerification
 
-    // Submit verification state
     private val _verificationSubmitState = MutableStateFlow<Result<Boolean>?>(null)
     val verificationSubmitState: StateFlow<Result<Boolean>?> = _verificationSubmitState
 
-    // Admin: all verifications joined with user info
     private val _allVerifications = MutableStateFlow<Result<List<Pair<User, Verification>>>?>(null)
     val allVerifications: StateFlow<Result<List<Pair<User, Verification>>>?> = _allVerifications
 
-    // Admin: approve/reject state
     private val _verificationUpdateState = MutableStateFlow<Result<Boolean>?>(null)
     val verificationUpdateState: StateFlow<Result<Boolean>?> = _verificationUpdateState
 
@@ -80,6 +80,7 @@ class AuthViewModel : ViewModel() {
         clearResetState()
         _myVerification.value = null
         _currentUserData.value = null
+        _profilePhotoState.value = null
     }
 
     fun resetPassword(email: String) {
@@ -115,9 +116,21 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    // Upload profile photo URL to users/{uid}/profilePhotoUrl
+    fun updateProfilePhoto(photoUrl: String) {
+        viewModelScope.launch {
+            val uid = currentUser?.uid ?: return@launch
+            _profilePhotoState.value = Result.Loading
+            _profilePhotoState.value = repository.updateProfilePhoto(uid, photoUrl)
+            // Refresh user data so photo appears everywhere immediately
+            fetchCurrentUserData()
+        }
+    }
+
+    fun clearProfilePhotoState() { _profilePhotoState.value = null }
+
     // ─── Verifications Table Functions ───────────────────────────
 
-    /** Load current user's verification record from verifications/ table */
     fun fetchMyVerification() {
         viewModelScope.launch {
             val uid = currentUser?.uid ?: return@launch
@@ -126,7 +139,6 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    /** Submit verification — writes to verifications/{uid} with uid as FK to users/ */
     fun submitVerification(
         licenseNumber: String,
         licenseExpiryDate: String,
@@ -141,12 +153,10 @@ class AuthViewModel : ViewModel() {
                 licenseExpiryDate = licenseExpiryDate,
                 licensePhotoUrl = licensePhotoUrl
             )
-            // Refresh own verification after submitting
             fetchMyVerification()
         }
     }
 
-    /** Admin: load all verifications joined with user data */
     fun fetchAllVerifications() {
         viewModelScope.launch {
             _allVerifications.value = Result.Loading
@@ -154,21 +164,19 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    /** Admin: approve a user's verification */
     fun approveVerification(uid: String) {
         viewModelScope.launch {
             _verificationUpdateState.value = Result.Loading
             _verificationUpdateState.value = repository.updateVerificationStatus(uid, "approved")
-            fetchAllVerifications() // Refresh admin list
+            fetchAllVerifications()
         }
     }
 
-    /** Admin: reject a user's verification */
     fun rejectVerification(uid: String) {
         viewModelScope.launch {
             _verificationUpdateState.value = Result.Loading
             _verificationUpdateState.value = repository.updateVerificationStatus(uid, "rejected")
-            fetchAllVerifications() // Refresh admin list
+            fetchAllVerifications()
         }
     }
 

@@ -3,6 +3,7 @@ package com.example.liftnepal.presentation.dashboard
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -10,11 +11,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import coil.compose.AsyncImage
+import com.example.liftnepal.data.model.User
+import com.example.liftnepal.data.utils.Result
 import com.example.liftnepal.presentation.components.BottomNavBar
 import com.example.liftnepal.presentation.components.BottomNavItem
 import com.example.liftnepal.presentation.dashboard.sections.*
@@ -28,7 +34,20 @@ fun DashboardScreen(
     viewModel: AuthViewModel
 ) {
     var currentRoute by remember { mutableStateOf("rides") }
-    val currentUser = viewModel.currentUser
+
+    // ✅ Use userData from Firebase Realtime DB (has displayName)
+    // NOT currentUser from Firebase Auth (displayName is empty there)
+    val currentUserDataState by viewModel.currentUserData.collectAsState()
+    val userData = (currentUserDataState as? Result.Success)?.data
+
+    LaunchedEffect(Unit) {
+        viewModel.fetchCurrentUserData()
+    }
+
+    // Use userData.displayName — falls back to email initial if still loading
+    val displayName = userData?.displayName ?: ""
+    val userEmail   = userData?.email ?: ""
+    val profilePhotoUrl = userData?.profilePhotoUrl ?: ""
 
     val bottomNavItems = listOf(
         BottomNavItem("Rides",    Icons.Default.Home,      "rides"),
@@ -39,11 +58,17 @@ fun DashboardScreen(
 
     Scaffold(
         containerColor = SurfaceVariant,
-        topBar = { UserTopBar(currentRoute = currentRoute, userName = currentUser?.displayName ?: "") },
+        topBar = {
+            UserTopBar(
+                currentRoute    = currentRoute,
+                userName        = displayName,
+                profilePhotoUrl = profilePhotoUrl
+            )
+        },
         bottomBar = {
             BottomNavBar(
-                items = bottomNavItems,
-                currentRoute = currentRoute,
+                items          = bottomNavItems,
+                currentRoute   = currentRoute,
                 onItemSelected = { currentRoute = it }
             )
         }
@@ -65,10 +90,11 @@ fun DashboardScreen(
                     "bookings" -> BookingsSection()
                     "issues"   -> IssueSection()
                     "menu"     -> MenuSection(
-                        userName = currentUser?.displayName ?: "User",
-                        userEmail = currentUser?.email ?: "",
-                        viewModel = viewModel,           // ← pass viewModel
-                        onLogout = {
+                        userName        = displayName,   // ✅ from DB
+                        userEmail       = userEmail,     // ✅ from DB
+                        userData        = userData,
+                        viewModel       = viewModel,
+                        onLogout        = {
                             viewModel.logout()
                             navController.navigate("login") {
                                 popUpTo("dashboard") { inclusive = true }
@@ -87,7 +113,11 @@ fun DashboardScreen(
 }
 
 @Composable
-fun UserTopBar(currentRoute: String, userName: String) {
+fun UserTopBar(
+    currentRoute: String,
+    userName: String,
+    profilePhotoUrl: String
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -104,7 +134,13 @@ fun UserTopBar(currentRoute: String, userName: String) {
                 if (currentRoute == "rides") {
                     Column {
                         Text("Hello,", fontSize = 13.sp, color = TextSecondary)
-                        Text(userName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Text(
+                            // Show name, or "..." while loading
+                            text = userName.ifEmpty { "..." },
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
                     }
                 } else {
                     Text(
@@ -124,6 +160,7 @@ fun UserTopBar(currentRoute: String, userName: String) {
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Notification bell
                     Box(
                         modifier = Modifier
                             .size(40.dp)
@@ -132,13 +169,33 @@ fun UserTopBar(currentRoute: String, userName: String) {
                     ) {
                         Icon(Icons.Default.Notifications, null, tint = PrimaryColor, modifier = Modifier.size(22.dp))
                     }
+
+                    // Profile avatar — real photo or initial letter
                     Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .background(PrimaryColor, RoundedCornerShape(12.dp)),
+                            .clip(CircleShape)
+                            .background(PrimaryColor),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(userName.firstOrNull()?.toString() ?: "", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        if (profilePhotoUrl.isNotEmpty()) {
+                            AsyncImage(
+                                model = profilePhotoUrl,
+                                contentDescription = "Profile Photo",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Text(
+                                // ✅ Initial letter from DB display name
+                                text = userName.firstOrNull()?.toString() ?: "",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
                     }
                 }
             }

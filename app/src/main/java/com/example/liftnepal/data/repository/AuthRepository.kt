@@ -94,9 +94,17 @@ class AuthRepository {
         }
     }
 
-    // ─── Verifications Table ──────────────────────────────────────
+    // Save profile photo URL to users/{uid}/profilePhotoUrl
+    suspend fun updateProfilePhoto(uid: String, photoUrl: String): Result<Boolean> {
+        return try {
+            db.child("users").child(uid).child("profilePhotoUrl").setValue(photoUrl).await()
+            Result.Success(true)
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Failed to update profile photo")
+        }
+    }
 
-    // verifications/{uid}  ← uid is foreign key → users/{uid}
+    // ─── Verifications Table ──────────────────────────────────────
 
     suspend fun submitVerification(
         uid: String,
@@ -129,7 +137,6 @@ class AuthRepository {
         }
     }
 
-    // Admin: fetch all verifications joined with user info
     suspend fun getAllVerifications(): Result<List<Pair<User, Verification>>> {
         return try {
             val verSnapshot = db.child("verifications").get().await()

@@ -1,7 +1,5 @@
 package com.example.liftnepal.data.utils
 
-
-
 import android.content.Context
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
@@ -15,11 +13,15 @@ import org.json.JSONObject
 
 object CloudinaryUploader {
 
-    // ⚠️ REPLACE WITH YOUR VALUES FROM CLOUDINARY DASHBOARD
-    private const val CLOUD_NAME = "dmifam6tj"        // e.g. "dxxxxxxxx"
-    private const val UPLOAD_PRESET = "liftnepal_licenses"  // preset you created
+    // ⚠️ REPLACE WITH YOUR CLOUD NAME FROM CLOUDINARY DASHBOARD
+    private const val CLOUD_NAME = "dmifam6tj"
 
-    suspend fun uploadImage(context: Context, imageUri: Uri): Result<String> {
+    // Presets — one per feature
+    const val PRESET_LICENSES = "liftnepal_licenses"
+    const val PRESET_PROFILES = "liftnepal_profiles"
+    const val PRESET_RIDES    = "liftnepal_rides"     // for future use
+
+    suspend fun uploadImage(context: Context, imageUri: Uri, preset: String): Result<String> {
         return withContext(Dispatchers.IO) {
             try {
                 val inputStream = context.contentResolver.openInputStream(imageUri)
@@ -32,10 +34,10 @@ object CloudinaryUploader {
                     .setType(MultipartBody.FORM)
                     .addFormDataPart(
                         "file",
-                        "license.jpg",
+                        "upload.jpg",
                         imageBytes.toRequestBody("image/*".toMediaTypeOrNull())
                     )
-                    .addFormDataPart("upload_preset", UPLOAD_PRESET)
+                    .addFormDataPart("upload_preset", preset)
                     .build()
 
                 val request = Request.Builder()

@@ -1,7 +1,5 @@
 package com.example.liftnepal.presentation.dashboard.sections
 
-
-
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,16 +25,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.liftnepal.data.model.Verification
 import com.example.liftnepal.data.utils.CloudinaryUploader
 import com.example.liftnepal.data.utils.Result
 import com.example.liftnepal.presentation.viewmodel.AuthViewModel
 import com.example.liftnepal.ui.theme.*
 import kotlinx.coroutines.launch
-
-// ─────────────────────────────────────────────────────────────
-// Main entry — reads from verifications/ table via myVerification
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 fun VerificationCard(viewModel: AuthViewModel) {
@@ -77,15 +70,10 @@ fun VerificationCard(viewModel: AuthViewModel) {
             }
         }
         else -> {
-            // null state = not yet loaded, show the submit card
             VerifyYourselfCard(viewModel = viewModel, resubmit = false)
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// Status display card (pending / approved)
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 fun VerificationStatusCard(
@@ -114,10 +102,6 @@ fun VerificationStatusCard(
         Text(message, color = TextSecondary, fontSize = 13.sp)
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// Submit / Resubmit card
-// ─────────────────────────────────────────────────────────────
 
 @Composable
 fun VerifyYourselfCard(viewModel: AuthViewModel, resubmit: Boolean) {
@@ -199,10 +183,6 @@ fun VerifyYourselfCard(viewModel: AuthViewModel, resubmit: Boolean) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Verification form dialog
-// ─────────────────────────────────────────────────────────────
-
 @Composable
 fun VerificationDialog(
     viewModel: AuthViewModel,
@@ -250,7 +230,6 @@ fun VerificationDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // License Number
                 OutlinedTextField(
                     value = licenseNumber,
                     onValueChange = { licenseNumber = it },
@@ -265,7 +244,6 @@ fun VerificationDialog(
                     )
                 )
 
-                // Expiry Date
                 OutlinedTextField(
                     value = expiryDate,
                     onValueChange = { expiryDate = it },
@@ -280,13 +258,7 @@ fun VerificationDialog(
                     )
                 )
 
-                // License Photo picker
-                Text(
-                    "License Photo",
-                    fontSize = 13.sp,
-                    color = TextSecondary,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Text("License Photo", fontSize = 13.sp, color = TextSecondary, fontWeight = FontWeight.SemiBold)
 
                 Box(
                     modifier = Modifier
@@ -306,9 +278,7 @@ fun VerificationDialog(
                         AsyncImage(
                             model = selectedImageUri,
                             contentDescription = "License Photo",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(12.dp)),
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
                             contentScale = ContentScale.Crop
                         )
                     } else {
@@ -316,12 +286,7 @@ fun VerificationDialog(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(
-                                Icons.Default.AddPhotoAlternate,
-                                contentDescription = null,
-                                tint = TextSecondary,
-                                modifier = Modifier.size(36.dp)
-                            )
+                            Icon(Icons.Default.AddPhotoAlternate, null, tint = TextSecondary, modifier = Modifier.size(36.dp))
                             Text("Tap to select photo", color = TextSecondary, fontSize = 13.sp)
                         }
                     }
@@ -343,7 +308,12 @@ fun VerificationDialog(
                             isUploading = true
                             errorMessage = ""
                             scope.launch {
-                                when (val uploadResult = CloudinaryUploader.uploadImage(context, selectedImageUri!!)) {
+                                // ✅ preset parameter added here
+                                when (val uploadResult = CloudinaryUploader.uploadImage(
+                                    context,
+                                    selectedImageUri!!,
+                                    CloudinaryUploader.PRESET_LICENSES  // ← fix
+                                )) {
                                     is Result.Success -> {
                                         viewModel.submitVerification(
                                             licenseNumber = licenseNumber,
@@ -366,11 +336,7 @@ fun VerificationDialog(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 if (isUploading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
                     Spacer(Modifier.width(8.dp))
                     Text("Uploading...")
                 } else {

@@ -1,5 +1,8 @@
 package com.example.liftnepal.presentation.dashboard.sections
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,28 +20,39 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.example.liftnepal.data.model.User
 import com.example.liftnepal.data.model.Verification
+import com.example.liftnepal.data.utils.CloudinaryUploader
 import com.example.liftnepal.data.utils.Result
 import com.example.liftnepal.presentation.viewmodel.AuthViewModel
 import com.example.liftnepal.ui.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun MenuSection(
-    userName: String = "John Doe",
-    userEmail: String = "john@liftnepal.com",
+    userName: String = "User",
+    userEmail: String = "",
+    userData: User? = null,
     onLogout: () -> Unit = {},
     onSwitchToRider: () -> Unit = {},
     viewModel: AuthViewModel
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
     var showProfileDialog by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(false) }
+    var isUploadingPhoto by remember { mutableStateOf(false) }
 
-    // Observe verification status from verifications/ table
+    // Observe verification status
     val myVerificationState by viewModel.myVerification.collectAsState()
     val verificationStatus = when (val state = myVerificationState) {
         is Result.Success -> state.data?.status ?: "none"
@@ -49,6 +63,27 @@ fun MenuSection(
         viewModel.fetchMyVerification()
     }
 
+    // Profile photo picker
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            isUploadingPhoto = true
+            scope.launch {
+                when (val result = CloudinaryUploader.uploadImage(context, it, CloudinaryUploader.PRESET_PROFILES)) {
+                    is Result.Success -> {
+                        viewModel.updateProfilePhoto(result.data)
+                        isUploadingPhoto = false
+                    }
+                    is Result.Error -> {
+                        isUploadingPhoto = false
+                    }
+                    else -> { isUploadingPhoto = false }
+                }
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -56,7 +91,7 @@ fun MenuSection(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        // Profile Header
+        // ── Profile Header Card ───────────────────────────────────
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
@@ -67,21 +102,63 @@ fun MenuSection(
                 modifier = Modifier.fillMaxWidth().padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Profile photo with upload button overlay
                 Box(
-                    modifier = Modifier
-                        .size(90.dp)
-                        .clip(CircleShape)
-                        .background(PrimaryColor.copy(alpha = 0.12f))
-                        .border(3.dp, PrimaryColor, CircleShape),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier.size(90.dp),
+                    contentAlignment = Alignment.BottomEnd
                 ) {
-                    Icon(Icons.Default.Person, null, tint = PrimaryColor, modifier = Modifier.size(46.dp))
+                    // Profile photo circle
+                    Box(
+                        modifier = Modifier
+                            .size(90.dp)
+                            .clip(CircleShape)
+                            .background(PrimaryColor.copy(alpha = 0.12f))
+                            .border(3.dp, PrimaryColor, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isUploadingPhoto) {
+                            CircularProgressIndicator(
+                                color = PrimaryColor,
+                                modifier = Modifier.size(32.dp),
+                                strokeWidth = 3.dp
+                            )
+                        } else if (!userData?.profilePhotoUrl.isNullOrEmpty()) {
+                            AsyncImage(
+                                model = userData!!.profilePhotoUrl,
+                                contentDescription = "Profile Photo",
+                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(Icons.Default.Person, null, tint = PrimaryColor, modifier = Modifier.size(46.dp))
+                        }
+                    }
+
+                    // Camera button to change photo
+                    Box(
+                        modifier = Modifier
+                            .size(26.dp)
+                            .clip(CircleShape)
+                            .background(PrimaryColor)
+                            .clickable { photoPickerLauncher.launch("image/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.CameraAlt,
+                            contentDescription = "Change Photo",
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                 }
+
                 Spacer(Modifier.height(14.dp))
                 Text(userName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                 Spacer(Modifier.height(4.dp))
                 Text(userEmail, fontSize = 13.sp, color = TextSecondary)
                 Spacer(Modifier.height(12.dp))
+
+                // Badges row
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Box(
                         modifier = Modifier
@@ -90,7 +167,7 @@ fun MenuSection(
                     ) {
                         Text("Passenger", fontSize = 13.sp, color = PrimaryColor, fontWeight = FontWeight.SemiBold)
                     }
-                    // Verification badge — changes dynamically
+
                     val (badgeColor, badgeIcon, badgeText) = when (verificationStatus) {
                         "pending"  -> Triple(Color(0xFFF59E0B), Icons.Default.HourglassEmpty, "Pending")
                         "approved" -> Triple(Color(0xFF10B981), Icons.Default.VerifiedUser,   "Verified")
@@ -114,7 +191,7 @@ fun MenuSection(
 
         Spacer(Modifier.height(22.dp))
 
-        // Account section
+        // ── Account Section ───────────────────────────────────────
         MenuSectionLabel("Account")
         Spacer(Modifier.height(8.dp))
 
@@ -125,11 +202,21 @@ fun MenuSection(
             elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                MenuRow(Icons.Default.Person,        PrimaryColor,   "My Profile",             "View your account info", onClick = { showProfileDialog = true })
+                MenuRow(
+                    Icons.Default.Person, PrimaryColor, "My Profile", "View your account info",
+                    onClick = { showProfileDialog = true }
+                )
                 RowDivider()
-                MenuRow(Icons.Default.Lock,          AccentOrange,   "Change Password",        "Update your password",   onClick = { showChangePasswordDialog = true })
+                MenuRow(
+                    Icons.Default.Lock, AccentOrange, "Change Password", "Update your password",
+                    onClick = { showChangePasswordDialog = true }
+                )
                 RowDivider()
-                MenuRow(Icons.Default.AccountCircle, AccentDarkBlue, "Update Profile Picture", "Change your avatar",     onClick = { })
+                // Update Profile Picture row — triggers photo picker directly
+                MenuRow(
+                    Icons.Default.AccountCircle, AccentDarkBlue, "Update Profile Picture", "Change your avatar",
+                    onClick = { photoPickerLauncher.launch("image/*") }
+                )
             }
         }
 
@@ -139,7 +226,6 @@ fun MenuSection(
         MenuSectionLabel("Verification")
         Spacer(Modifier.height(8.dp))
 
-        // This card changes based on real status from verifications/ table
         VerificationCard(viewModel = viewModel)
 
         Spacer(Modifier.height(16.dp))
@@ -178,19 +264,13 @@ fun MenuSection(
                                 "rejected" -> "Verification rejected"
                                 else       -> "Verify yourself first"
                             },
-                            fontSize = 12.sp,
-                            color = TextSecondary
+                            fontSize = 12.sp, color = TextSecondary
                         )
                     }
                 }
                 Switch(
-                    // Only allow switching if admin approved
                     checked = false,
-                    onCheckedChange = {
-                        if (verificationStatus == "approved") {
-                            onSwitchToRider()
-                        }
-                    },
+                    onCheckedChange = { if (verificationStatus == "approved") onSwitchToRider() },
                     enabled = verificationStatus == "approved",
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
@@ -204,7 +284,7 @@ fun MenuSection(
 
         Spacer(Modifier.height(16.dp))
 
-        // Session
+        // ── Session ───────────────────────────────────────────────
         MenuSectionLabel("Session")
         Spacer(Modifier.height(8.dp))
 
@@ -234,7 +314,7 @@ fun MenuSection(
         Spacer(Modifier.height(24.dp))
     }
 
-    // Profile Dialog
+    // ── Profile Dialog ────────────────────────────────────────────
     if (showProfileDialog) {
         AlertDialog(
             onDismissRequest = { showProfileDialog = false },
@@ -243,10 +323,35 @@ fun MenuSection(
             title = { Text("My Profile", fontWeight = FontWeight.Bold, color = TextPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // Show profile photo inside dialog too
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(70.dp)
+                                .clip(CircleShape)
+                                .background(PrimaryColor.copy(alpha = 0.12f))
+                                .border(2.dp, PrimaryColor, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (!userData?.profilePhotoUrl.isNullOrEmpty()) {
+                                AsyncImage(
+                                    model = userData!!.profilePhotoUrl,
+                                    contentDescription = "Profile Photo",
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(Icons.Default.Person, null, tint = PrimaryColor, modifier = Modifier.size(36.dp))
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
                     ProfileDetailRow("Name", userName)
                     ProfileDetailRow("Email", userEmail)
                     ProfileDetailRow("Role", "Passenger")
-                    ProfileDetailRow("Member Since", "June 2025")
                     ProfileDetailRow(
                         "Verified",
                         when (verificationStatus) {
@@ -268,7 +373,7 @@ fun MenuSection(
         )
     }
 
-    // Change Password Dialog
+    // ── Change Password Dialog ────────────────────────────────────
     if (showChangePasswordDialog) {
         ChangePasswordDialog(onDismiss = { showChangePasswordDialog = false })
     }
@@ -369,11 +474,11 @@ fun ChangePasswordDialog(onDismiss: () -> Unit) {
     var error by remember { mutableStateOf("") }
 
     fun isPasswordStrong(password: String): Boolean {
-        val hasUpperCase = password.any { it.isUpperCase() }
-        val hasLowerCase = password.any { it.isLowerCase() }
-        val hasDigit = password.any { it.isDigit() }
-        val hasSpecialChar = password.any { !it.isLetterOrDigit() }
-        return password.length >= 8 && hasUpperCase && hasLowerCase && hasDigit && hasSpecialChar
+        return password.length >= 8 &&
+                password.any { it.isUpperCase() } &&
+                password.any { it.isLowerCase() } &&
+                password.any { it.isDigit() } &&
+                password.any { !it.isLetterOrDigit() }
     }
 
     AlertDialog(
@@ -384,7 +489,7 @@ fun ChangePasswordDialog(onDismiss: () -> Unit) {
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (error.isNotEmpty()) {
-                    Text(error, color = AccentRed, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
+                    Text(error, color = AccentRed, fontSize = 12.sp)
                 }
                 OutlinedTextField(
                     value = current, onValueChange = { current = it; error = "" },
@@ -418,8 +523,8 @@ fun ChangePasswordDialog(onDismiss: () -> Unit) {
                 onClick = {
                     when {
                         current.isEmpty() || newPass.isEmpty() || confirm.isEmpty() -> error = "Please fill all fields"
-                        newPass != confirm -> error = "New passwords do not match"
-                        !isPasswordStrong(newPass) -> error = "New password is too weak"
+                        newPass != confirm -> error = "Passwords do not match"
+                        !isPasswordStrong(newPass) -> error = "Password is too weak"
                         else -> onDismiss()
                     }
                 },
@@ -428,7 +533,9 @@ fun ChangePasswordDialog(onDismiss: () -> Unit) {
             ) { Text("Update", color = Color.White) }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(12.dp)) { Text("Cancel", color = TextSecondary) }
+            OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(12.dp)) {
+                Text("Cancel", color = TextSecondary)
+            }
         }
     )
 }
