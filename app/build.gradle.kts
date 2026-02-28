@@ -74,4 +74,7 @@ dependencies {
 
     implementation("androidx.navigation:navigation-compose:2.8.5")
 
+    implementation("com.cloudinary:cloudinary-android:3.1.2")
+    implementation("io.coil-kt:coil-compose:2.5.0")
+
 }

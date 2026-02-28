@@ -22,6 +22,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.liftnepal.data.model.Verification
+import com.example.liftnepal.data.utils.Result
+import com.example.liftnepal.presentation.viewmodel.AuthViewModel
 import com.example.liftnepal.ui.theme.*
 
 @Composable
@@ -29,12 +32,22 @@ fun MenuSection(
     userName: String = "John Doe",
     userEmail: String = "john@liftnepal.com",
     onLogout: () -> Unit = {},
-    onSwitchToRider: () -> Unit = {}
+    onSwitchToRider: () -> Unit = {},
+    viewModel: AuthViewModel
 ) {
-    var isSwitchedToRider by remember { mutableStateOf(false) }
     var showProfileDialog by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(false) }
-    var showVerifyDialog by remember { mutableStateOf(false) }
+
+    // Observe verification status from verifications/ table
+    val myVerificationState by viewModel.myVerification.collectAsState()
+    val verificationStatus = when (val state = myVerificationState) {
+        is Result.Success -> state.data?.status ?: "none"
+        else -> "none"
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.fetchMyVerification()
+    }
 
     Column(
         modifier = Modifier
@@ -77,16 +90,22 @@ fun MenuSection(
                     ) {
                         Text("Passenger", fontSize = 13.sp, color = PrimaryColor, fontWeight = FontWeight.SemiBold)
                     }
-                    // Unverified badge
+                    // Verification badge — changes dynamically
+                    val (badgeColor, badgeIcon, badgeText) = when (verificationStatus) {
+                        "pending"  -> Triple(Color(0xFFF59E0B), Icons.Default.HourglassEmpty, "Pending")
+                        "approved" -> Triple(Color(0xFF10B981), Icons.Default.VerifiedUser,   "Verified")
+                        "rejected" -> Triple(Color(0xFFEF4444), Icons.Default.Cancel,          "Rejected")
+                        else       -> Triple(AccentOrange,      Icons.Default.Warning,          "Unverified")
+                    }
                     Box(
                         modifier = Modifier
-                            .background(AccentOrange.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
+                            .background(badgeColor.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
                             .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Warning, null, tint = AccentOrange, modifier = Modifier.size(13.dp))
+                            Icon(badgeIcon, null, tint = badgeColor, modifier = Modifier.size(13.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Unverified", fontSize = 13.sp, color = AccentOrange, fontWeight = FontWeight.SemiBold)
+                            Text(badgeText, fontSize = 13.sp, color = badgeColor, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -106,63 +125,26 @@ fun MenuSection(
             elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                MenuRow(Icons.Default.Person,       PrimaryColor,     "My Profile",             "View your account info",    onClick = { showProfileDialog = true })
+                MenuRow(Icons.Default.Person,        PrimaryColor,   "My Profile",             "View your account info", onClick = { showProfileDialog = true })
                 RowDivider()
-                MenuRow(Icons.Default.Lock,         AccentOrange,     "Change Password",        "Update your password",      onClick = { showChangePasswordDialog = true })
+                MenuRow(Icons.Default.Lock,          AccentOrange,   "Change Password",        "Update your password",   onClick = { showChangePasswordDialog = true })
                 RowDivider()
-                MenuRow(Icons.Default.AccountCircle,AccentDarkBlue,   "Update Profile Picture", "Change your avatar",        onClick = { })
+                MenuRow(Icons.Default.AccountCircle, AccentDarkBlue, "Update Profile Picture", "Change your avatar",     onClick = { })
             }
         }
 
         Spacer(Modifier.height(16.dp))
 
-        // Verify section
+        // ── Verification Section ──────────────────────────────────
         MenuSectionLabel("Verification")
         Spacer(Modifier.height(8.dp))
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = CardBackground),
-            elevation = CardDefaults.cardElevation(2.dp)
-        ) {
-            // Verify Yourself row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { showVerifyDialog = true }
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .background(AccentOrange.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.VerifiedUser, null, tint = AccentOrange, modifier = Modifier.size(22.dp))
-                    }
-                    Spacer(Modifier.width(14.dp))
-                    Column {
-                        Text("Verify Yourself", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextPrimary)
-                        Text("Required to activate Rider Mode", fontSize = 12.sp, color = TextSecondary)
-                    }
-                }
-                Box(
-                    modifier = Modifier
-                        .background(AccentOrange.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Text("Pending", fontSize = 11.sp, color = AccentOrange, fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
+        // This card changes based on real status from verifications/ table
+        VerificationCard(viewModel = viewModel)
 
         Spacer(Modifier.height(16.dp))
 
-        // Mode section
+        // ── Mode Section ──────────────────────────────────────────
         MenuSectionLabel("Mode")
         Spacer(Modifier.height(8.dp))
 
@@ -190,15 +172,32 @@ fun MenuSection(
                     Column {
                         Text("Switch to Rider Mode", fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextPrimary)
                         Text(
-                            if (isSwitchedToRider) "You are now a Rider" else "Verify yourself first",
-                            fontSize = 12.sp, color = TextSecondary
+                            when (verificationStatus) {
+                                "approved" -> "Tap to switch to Rider Mode"
+                                "pending"  -> "Awaiting admin approval"
+                                "rejected" -> "Verification rejected"
+                                else       -> "Verify yourself first"
+                            },
+                            fontSize = 12.sp,
+                            color = TextSecondary
                         )
                     }
                 }
                 Switch(
-                    checked = isSwitchedToRider,
-                    onCheckedChange = { isSwitchedToRider = it; if (it) onSwitchToRider() },
-                    colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = PrimaryColor)
+                    // Only allow switching if admin approved
+                    checked = false,
+                    onCheckedChange = {
+                        if (verificationStatus == "approved") {
+                            onSwitchToRider()
+                        }
+                    },
+                    enabled = verificationStatus == "approved",
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = PrimaryColor,
+                        disabledUncheckedThumbColor = Color.Gray,
+                        disabledUncheckedTrackColor = Color.Gray.copy(alpha = 0.3f)
+                    )
                 )
             }
         }
@@ -248,7 +247,15 @@ fun MenuSection(
                     ProfileDetailRow("Email", userEmail)
                     ProfileDetailRow("Role", "Passenger")
                     ProfileDetailRow("Member Since", "June 2025")
-                    ProfileDetailRow("Verified", "No")
+                    ProfileDetailRow(
+                        "Verified",
+                        when (verificationStatus) {
+                            "approved" -> "Yes ✓"
+                            "pending"  -> "Pending..."
+                            "rejected" -> "Rejected"
+                            else       -> "No"
+                        }
+                    )
                 }
             },
             confirmButton = {
@@ -264,67 +271,6 @@ fun MenuSection(
     // Change Password Dialog
     if (showChangePasswordDialog) {
         ChangePasswordDialog(onDismiss = { showChangePasswordDialog = false })
-    }
-
-    // Verify Yourself Dialog — placeholder UI
-    if (showVerifyDialog) {
-        AlertDialog(
-            onDismissRequest = { showVerifyDialog = false },
-            shape = RoundedCornerShape(24.dp),
-            containerColor = CardBackground,
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.VerifiedUser, null, tint = AccentOrange, modifier = Modifier.size(22.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Verify Yourself", fontWeight = FontWeight.Bold, color = TextPrimary)
-                }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Info banner
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(AccentOrange.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
-                            .padding(14.dp)
-                    ) {
-                        Text(
-                            "Verification is required to activate Rider Mode. This feature will be available soon.",
-                            fontSize = 13.sp,
-                            color = TextSecondary,
-                            lineHeight = 20.sp
-                        )
-                    }
-
-                    // Steps (coming soon placeholders)
-                    VerifyStep(number = "1", label = "Upload Government ID",    done = false)
-                    VerifyStep(number = "2", label = "Take a Selfie",           done = false)
-                    VerifyStep(number = "3", label = "Review & Submit",         done = false)
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(PrimaryColor.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
-                            .padding(12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "Coming Soon",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = PrimaryColor
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { showVerifyDialog = false },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
-                ) { Text("Got it", color = Color.White) }
-            }
-        )
     }
 }
 
@@ -440,7 +386,6 @@ fun ChangePasswordDialog(onDismiss: () -> Unit) {
                 if (error.isNotEmpty()) {
                     Text(error, color = AccentRed, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
                 }
-
                 OutlinedTextField(
                     value = current, onValueChange = { current = it; error = "" },
                     label = { Text("Current Password") }, modifier = Modifier.fillMaxWidth(),
@@ -472,26 +417,15 @@ fun ChangePasswordDialog(onDismiss: () -> Unit) {
             Button(
                 onClick = {
                     when {
-                        current.isEmpty() || newPass.isEmpty() || confirm.isEmpty() -> {
-                            error = "Please fill all fields"
-                        }
-                        newPass != confirm -> {
-                            error = "New passwords do not match"
-                        }
-                        !isPasswordStrong(newPass) -> {
-                            error = "New password is too weak"
-                        }
-                        else -> {
-                            // Logic to update password would go here
-                            onDismiss()
-                        }
+                        current.isEmpty() || newPass.isEmpty() || confirm.isEmpty() -> error = "Please fill all fields"
+                        newPass != confirm -> error = "New passwords do not match"
+                        !isPasswordStrong(newPass) -> error = "New password is too weak"
+                        else -> onDismiss()
                     }
                 },
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
-            ) {
-                Text("Update", color = Color.White)
-            }
+            ) { Text("Update", color = Color.White) }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(12.dp)) { Text("Cancel", color = TextSecondary) }

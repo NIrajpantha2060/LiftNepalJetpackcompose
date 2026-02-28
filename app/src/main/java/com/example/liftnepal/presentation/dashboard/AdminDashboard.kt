@@ -89,7 +89,7 @@ fun AdminDashboard(
                 when (route) {
                     "users"        -> AdminUsersSection(viewModel)
                     "rides"        -> AdminRidesSection()
-                    "verification" -> AdminVerificationSection()
+                    "verification" -> AdminVerificationSection(viewModel)
                     "issues"       -> AdminIssuesSection()
                 }
             }
