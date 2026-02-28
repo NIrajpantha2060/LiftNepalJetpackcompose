@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.example.liftnepal.data.utils.Result
 import com.example.liftnepal.presentation.components.BottomNavItem
 import com.example.liftnepal.presentation.dashboard.sections.*
 import com.example.liftnepal.presentation.viewmodel.AuthViewModel
@@ -26,10 +27,20 @@ import com.example.liftnepal.ui.theme.*
 fun RiderDashboard(
     navController: NavHostController,
     authViewModel: AuthViewModel,
-    rideViewModel: RideViewModel  // ✅ Add RideViewModel parameter
+    rideViewModel: RideViewModel
 ) {
     var currentRoute by remember { mutableStateOf("add_ride") }
-    val currentUser = authViewModel.currentUser
+
+    // ✅ Get real-time user data (name, email, photo) from DB
+    val currentUserDataState by authViewModel.currentUserData.collectAsState()
+    val userData = (currentUserDataState as? Result.Success)?.data
+
+    LaunchedEffect(Unit) {
+        authViewModel.fetchCurrentUserData()
+    }
+
+    val displayName = userData?.displayName ?: ""
+    val userEmail   = userData?.email ?: ""
 
     val bottomNavItems = listOf(
         BottomNavItem("Add Ride",    Icons.Default.Add,        "add_ride"),
@@ -43,7 +54,7 @@ fun RiderDashboard(
         topBar = {
             RiderTopBar(
                 currentRoute = currentRoute,
-                userName = currentUser?.displayName ?: ""
+                userName = displayName
             )
         },
         bottomBar = {
@@ -74,8 +85,9 @@ fun RiderDashboard(
                     "ride_history" -> RideHistorySection()
                     "rider_issues" -> RiderIssueSection()
                     "rider_menu"   -> RiderMenuSection(
-                        userName = currentUser?.displayName ?: "User",
-                        userEmail = currentUser?.email ?: "",
+                        userName = displayName,
+                        userEmail = userEmail,
+                        authViewModel = authViewModel, // ✅ Passed authViewModel
                         onSwitchToUser = {
                             navController.navigate("dashboard") {
                                 popUpTo("rider_dashboard") { inclusive = true }
@@ -114,7 +126,7 @@ fun RiderTopBar(currentRoute: String, userName: String) {
                 if (currentRoute == "add_ride") {
                     Column {
                         Text("Rider Mode", fontSize = 13.sp, color = RiderTextSecondary)
-                        Text(userName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = RiderTextPrimary)
+                        Text(userName.ifEmpty { "..." }, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = RiderTextPrimary)
                     }
                 } else {
                     Text(
@@ -163,7 +175,6 @@ fun RiderTopBar(currentRoute: String, userName: String) {
                             modifier = Modifier
                                 .size(11.dp)
                                 .background(RiderOnlineGreen, RoundedCornerShape(50))
-                                .background(Color.White.copy(alpha = 0f))
                         )
                     }
                 }

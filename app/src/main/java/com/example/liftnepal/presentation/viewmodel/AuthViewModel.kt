@@ -3,6 +3,7 @@ package com.example.liftnepal.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.liftnepal.data.model.User
+import com.example.liftnepal.data.model.Vehicle
 import com.example.liftnepal.data.model.Verification
 import com.example.liftnepal.data.repository.AuthRepository
 import com.example.liftnepal.data.utils.Result
@@ -39,6 +40,10 @@ class AuthViewModel : ViewModel() {
     // Profile photo update state
     private val _profilePhotoState = MutableStateFlow<Result<Boolean>?>(null)
     val profilePhotoState: StateFlow<Result<Boolean>?> = _profilePhotoState
+
+    // Vehicle update state
+    private val _vehicleUpdateState = MutableStateFlow<Result<Boolean>?>(null)
+    val vehicleUpdateState: StateFlow<Result<Boolean>?> = _vehicleUpdateState
 
     // ─── Verifications Table States ───────────────────────────────
 
@@ -81,6 +86,7 @@ class AuthViewModel : ViewModel() {
         _myVerification.value = null
         _currentUserData.value = null
         _profilePhotoState.value = null
+        _vehicleUpdateState.value = null
     }
 
     fun resetPassword(email: String) {
@@ -116,7 +122,7 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    // Upload profile photo URL to users/{uid}/profilePhotoUrl
+    // Save profile photo URL to users/{uid}/profilePhotoUrl
     fun updateProfilePhoto(photoUrl: String) {
         viewModelScope.launch {
             val uid = currentUser?.uid ?: return@launch
@@ -128,6 +134,19 @@ class AuthViewModel : ViewModel() {
     }
 
     fun clearProfilePhotoState() { _profilePhotoState.value = null }
+
+    // Save vehicle info to users/{uid}/vehicle
+    fun updateVehicleInfo(vehicle: Vehicle) {
+        viewModelScope.launch {
+            val uid = currentUser?.uid ?: return@launch
+            _vehicleUpdateState.value = Result.Loading
+            _vehicleUpdateState.value = repository.updateVehicleInfo(uid, vehicle)
+            // Refresh user data so vehicle appears everywhere immediately
+            fetchCurrentUserData()
+        }
+    }
+
+    fun clearVehicleUpdateState() { _vehicleUpdateState.value = null }
 
     // ─── Verifications Table Functions ───────────────────────────
 

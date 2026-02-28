@@ -1,6 +1,7 @@
 package com.example.liftnepal.data.repository
 
 import com.example.liftnepal.data.model.User
+import com.example.liftnepal.data.model.Vehicle
 import com.example.liftnepal.data.model.Verification
 import com.example.liftnepal.data.utils.Result
 import com.google.firebase.auth.FirebaseAuth
@@ -101,6 +102,16 @@ class AuthRepository {
             Result.Success(true)
         } catch (e: Exception) {
             Result.Error(e.message ?: "Failed to update profile photo")
+        }
+    }
+
+    // Update vehicle info for user
+    suspend fun updateVehicleInfo(uid: String, vehicle: Vehicle): Result<Boolean> {
+        return try {
+            db.child("users").child(uid).child("vehicle").setValue(vehicle).await()
+            Result.Success(true)
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Failed to update vehicle info")
         }
     }
 

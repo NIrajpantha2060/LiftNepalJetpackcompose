@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.liftnepal.data.model.Ride
+import com.example.liftnepal.data.model.Vehicle
 import com.example.liftnepal.data.utils.CloudinaryUploader
 import com.example.liftnepal.data.utils.Result
 import com.example.liftnepal.presentation.viewmodel.AuthViewModel
@@ -39,6 +40,10 @@ fun AddRideSection(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    // Get current user data
+    val currentUserDataState by authViewModel.currentUserData.collectAsState()
+    val userData = (currentUserDataState as? Result.Success)?.data
+
     // Form fields
     var vehicleNumber    by remember { mutableStateOf("") }
     var startLocation    by remember { mutableStateOf("") }
@@ -47,6 +52,7 @@ fun AddRideSection(
     var rideTime         by remember { mutableStateOf("") }
     var remarks          by remember { mutableStateOf("") }
     var cost             by remember { mutableStateOf("") }
+    var saveVehicleInfo  by remember { mutableStateOf(false) }
 
     // Image states
     var vehicleImageUri  by remember { mutableStateOf<Uri?>(null) }
@@ -58,9 +64,15 @@ fun AddRideSection(
     val riderRidesState by rideViewModel.riderRidesState.collectAsState()
     val updateRideState by rideViewModel.updateRideState.collectAsState()
 
-    // Get current user data
-    val currentUserDataState by authViewModel.currentUserData.collectAsState()
-    val userData = (currentUserDataState as? Result.Success)?.data
+    // Auto-fill vehicle info if saved
+    LaunchedEffect(userData) {
+        userData?.vehicle?.let { savedVehicle ->
+            if (vehicleNumber.isEmpty()) vehicleNumber = savedVehicle.vehicleNumber
+            if (vehicleImageUri == null && savedVehicle.vehiclePhotoUrl.isNotEmpty()) {
+                vehicleImageUri = Uri.parse(savedVehicle.vehiclePhotoUrl)
+            }
+        }
+    }
 
     // Fetch rider's rides on load or when user data changes
     LaunchedEffect(userData) {
@@ -83,14 +95,13 @@ fun AddRideSection(
     // Handle add ride success
     LaunchedEffect(addRideState) {
         if (addRideState is Result.Success) {
-            vehicleNumber = ""
+            // Only clear non-vehicle fields
             startLocation = ""
             destination = ""
             pickupLocation = ""
             rideTime = ""
             remarks = ""
             cost = ""
-            vehicleImageUri = null
             rideViewModel.clearAddRideState()
             userData?.uid?.let { rideViewModel.fetchRidesByRider(it) }
         }
@@ -123,6 +134,7 @@ fun AddRideSection(
                 rideTime = rideTime, onRideTimeChange = { rideTime = it },
                 remarks = remarks, onRemarksChange = { remarks = it },
                 cost = cost, onCostChange = { cost = it },
+                saveVehicleInfo = saveVehicleInfo, onSaveVehicleInfoChange = { saveVehicleInfo = it },
                 vehicleImageUri = vehicleImageUri, onImageClick = { imagePickerLauncher.launch("image/*") },
                 isUploadingImage = isUploadingImage, uploadError = uploadError,
                 addRideState = addRideState,
@@ -147,25 +159,38 @@ fun AddRideSection(
                         isUploadingImage = true
                         uploadError = null
 
-                        val uploadResult = CloudinaryUploader.uploadImage(
-                            context = context, imageUri = vehicleImageUri!!, preset = CloudinaryUploader.PRESET_RIDES
-                        )
+                        val vehiclePhotoUrl = if (vehicleImageUri.toString().startsWith("http")) {
+                            vehicleImageUri.toString()
+                        } else {
+                            val uploadResult = CloudinaryUploader.uploadImage(
+                                context = context, imageUri = vehicleImageUri!!, preset = CloudinaryUploader.PRESET_RIDES
+                            )
+                            if (uploadResult is Result.Success) {
+                                uploadResult.data
+                            } else {
+                                uploadError = (uploadResult as? Result.Error)?.message ?: "Upload failed"
+                                isUploadingImage = false
+                                return@launch
+                            }
+                        }
 
                         isUploadingImage = false
 
-                        if (uploadResult is Result.Success) {
-                            val ride = Ride(
-                                riderId = userData.uid, riderName = userData.displayName,
-                                riderPhone = userData.phoneNumber, riderPhotoUrl = userData.profilePhotoUrl,
-                                vehicleNumber = vehicleNumber, vehiclePhotoUrl = uploadResult.data,
-                                startLocation = startLocation, destination = destination,
-                                pickupLocation = pickupLocation, rideTime = rideTime,
-                                remarks = remarks, cost = cost, status = "active"
+                        if (saveVehicleInfo) {
+                            authViewModel.updateVehicleInfo(
+                                Vehicle(vehicleNumber = vehicleNumber, vehiclePhotoUrl = vehiclePhotoUrl)
                             )
-                            rideViewModel.addRide(ride)
-                        } else if (uploadResult is Result.Error) {
-                            uploadError = uploadResult.message
                         }
+
+                        val ride = Ride(
+                            riderId = userData.uid, riderName = userData.displayName,
+                            riderPhone = userData.phoneNumber, riderPhotoUrl = userData.profilePhotoUrl,
+                            vehicleNumber = vehicleNumber, vehiclePhotoUrl = vehiclePhotoUrl,
+                            startLocation = startLocation, destination = destination,
+                            pickupLocation = pickupLocation, rideTime = rideTime,
+                            remarks = remarks, cost = cost, status = "active"
+                        )
+                        rideViewModel.addRide(ride)
                     }
                 }
             )
@@ -278,6 +303,7 @@ fun AddRideForm(
     rideTime: String, onRideTimeChange: (String) -> Unit,
     remarks: String, onRemarksChange: (String) -> Unit,
     cost: String, onCostChange: (String) -> Unit,
+    saveVehicleInfo: Boolean, onSaveVehicleInfoChange: (Boolean) -> Unit,
     vehicleImageUri: Uri?, onImageClick: () -> Unit,
     isUploadingImage: Boolean, uploadError: String?,
     addRideState: Result<Boolean>?, onAddRide: () -> Unit
@@ -332,6 +358,12 @@ fun AddRideForm(
                     }
                 }
             }
+            
+            // Save vehicle info checkbox
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onSaveVehicleInfoChange(!saveVehicleInfo) }) {
+                Checkbox(checked = saveVehicleInfo, onCheckedChange = onSaveVehicleInfoChange, colors = CheckboxDefaults.colors(checkedColor = RiderPrimary))
+                Text("Save vehicle info for future rides", fontSize = 13.sp, color = RiderTextSecondary)
+            }
 
             if (uploadError != null) Text(text = uploadError, color = AccentRed, fontSize = 12.sp)
 
@@ -362,7 +394,7 @@ fun AddRideForm(
                 label = { Text("Departure Time") }, placeholder = { Text("e.g. 08:00 PM") },
                 leadingIcon = { Icon(Icons.Default.AccessTime, null, tint = RiderPrimary) },
                 modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RiderPrimary, unfocusedBorderColor = RiderDivider)
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RiderPrimary, unfocusedBorderColor = DividerColor)
             )
 
             RiderSectionLabel("Pricing & Remarks")
@@ -401,9 +433,4 @@ fun AddRideForm(
             Text("Add Ride", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
     }
-}
-
-@Composable
-fun RiderSectionLabel(text: String) {
-    Text(text = text, fontSize = 12.sp, color = RiderTextSecondary, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 2.dp))
 }

@@ -1,7 +1,8 @@
 package com.example.liftnepal.presentation.dashboard.sections
 
-
-
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,19 +20,36 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.example.liftnepal.data.model.User
+import com.example.liftnepal.data.model.Vehicle
+import com.example.liftnepal.data.utils.CloudinaryUploader
+import com.example.liftnepal.data.utils.Result
+import com.example.liftnepal.presentation.viewmodel.AuthViewModel
 import com.example.liftnepal.ui.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun RiderMenuSection(
     userName: String = "John Doe",
     userEmail: String = "john@liftnepal.com",
     onSwitchToUser: () -> Unit = {},
-    onLogout: () -> Unit = {}
+    onLogout: () -> Unit = {},
+    authViewModel: AuthViewModel
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    
+    val currentUserDataState by authViewModel.currentUserData.collectAsState()
+    val userData = (currentUserDataState as? Result.Success)?.data
+    
     var showIssueHistory by remember { mutableStateOf(false) }
+    var showVehicleDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -62,7 +80,16 @@ fun RiderMenuSection(
                         .border(3.dp, RiderPrimary, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Person, null, tint = RiderPrimary, modifier = Modifier.size(46.dp))
+                    if (!userData?.profilePhotoUrl.isNullOrEmpty()) {
+                        AsyncImage(
+                            model = userData!!.profilePhotoUrl,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(Icons.Default.Person, null, tint = RiderPrimary, modifier = Modifier.size(46.dp))
+                    }
                 }
                 Spacer(Modifier.height(14.dp))
                 Text(userName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = RiderTextPrimary)
@@ -70,7 +97,6 @@ fun RiderMenuSection(
                 Text(userEmail, fontSize = 13.sp, color = RiderTextSecondary)
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Rider badge
                     Box(
                         modifier = Modifier
                             .background(RiderPrimary.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
@@ -82,18 +108,13 @@ fun RiderMenuSection(
                             Text("Rider", fontSize = 13.sp, color = RiderPrimary, fontWeight = FontWeight.SemiBold)
                         }
                     }
-                    // Online status badge
                     Box(
                         modifier = Modifier
                             .background(RiderOnlineBg, RoundedCornerShape(20.dp))
                             .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(7.dp)
-                                    .background(RiderOnlineGreen, CircleShape)
-                            )
+                            Box(modifier = Modifier.size(7.dp).background(RiderOnlineGreen, CircleShape))
                             Spacer(Modifier.width(5.dp))
                             Text("Online", fontSize = 13.sp, color = RiderOnlineGreen, fontWeight = FontWeight.SemiBold)
                         }
@@ -103,6 +124,58 @@ fun RiderMenuSection(
         }
 
         Spacer(Modifier.height(22.dp))
+
+        // Vehicle section
+        RiderSectionLabel("My Vehicle")
+        Spacer(Modifier.height(8.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = RiderCardBackground),
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                if (userData?.vehicle != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (userData.vehicle!!.vehiclePhotoUrl.isNotEmpty()) {
+                            AsyncImage(
+                                model = userData.vehicle!!.vehiclePhotoUrl,
+                                contentDescription = null,
+                                modifier = Modifier.size(60.dp).clip(RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier.size(60.dp).background(RiderSurface, RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) { Icon(Icons.Default.DirectionsCar, null, tint = RiderPrimary) }
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Column {
+                            Text(userData.vehicle!!.vehicleNumber, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = RiderTextPrimary)
+                            Text("Saved Vehicle Info", fontSize = 12.sp, color = RiderTextSecondary)
+                        }
+                        Spacer(Modifier.weight(1f))
+                        IconButton(onClick = { showVehicleDialog = true }) {
+                            Icon(Icons.Default.Edit, null, tint = RiderPrimary, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { showVehicleDialog = true }.padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(Icons.Default.Add, null, tint = RiderPrimary, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Add Vehicle Info", color = RiderPrimary, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
 
         // Support section
         RiderSectionLabel("Support")
@@ -198,6 +271,18 @@ fun RiderMenuSection(
         Spacer(Modifier.height(24.dp))
     }
 
+    // Vehicle Dialog
+    if (showVehicleDialog) {
+        VehicleUpdateDialog(
+            currentVehicle = userData?.vehicle,
+            onDismiss = { showVehicleDialog = false },
+            onUpdate = { vehicle ->
+                authViewModel.updateVehicleInfo(vehicle)
+                showVehicleDialog = false
+            }
+        )
+    }
+
     // Issue History Dialog
     if (showIssueHistory) {
         AlertDialog(
@@ -230,28 +315,104 @@ fun RiderMenuSection(
 }
 
 @Composable
-fun RiderMenuRow(
-    icon: ImageVector,
-    iconColor: Color,
-    label: String,
-    subtitle: String,
-    onClick: () -> Unit
+fun VehicleUpdateDialog(
+    currentVehicle: Vehicle?,
+    onDismiss: () -> Unit,
+    onUpdate: (Vehicle) -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    
+    var vehicleNumber by remember { mutableStateOf(currentVehicle?.vehicleNumber ?: "") }
+    var vehiclePhotoUri by remember { mutableStateOf<Uri?>(if (!currentVehicle?.vehiclePhotoUrl.isNullOrEmpty()) Uri.parse(currentVehicle!!.vehiclePhotoUrl) else null) }
+    var isUploading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf("") }
+
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        vehiclePhotoUri = uri
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(24.dp),
+        containerColor = RiderCardBackground,
+        title = { Text("Update Vehicle Info", fontWeight = FontWeight.Bold, color = RiderTextPrimary) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (error.isNotEmpty()) Text(error, color = AccentRed, fontSize = 12.sp)
+                
+                OutlinedTextField(
+                    value = vehicleNumber, onValueChange = { vehicleNumber = it },
+                    label = { Text("Vehicle Number") }, modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RiderPrimary, unfocusedBorderColor = RiderDivider)
+                )
+                
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(150.dp).background(RiderSurface, RoundedCornerShape(14.dp))
+                        .border(1.5.dp, RiderDivider, RoundedCornerShape(14.dp)).clickable { photoPicker.launch("image/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (vehiclePhotoUri != null) {
+                        AsyncImage(model = vehiclePhotoUri, contentDescription = null, modifier = Modifier.fillMaxSize().padding(8.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.CameraAlt, null, tint = RiderPrimary, modifier = Modifier.size(32.dp))
+                            Text("Upload Vehicle Photo", fontSize = 12.sp, color = RiderPrimary)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    scope.launch {
+                        if (vehicleNumber.isEmpty() || vehiclePhotoUri == null) {
+                            error = "Fill all fields"
+                            return@launch
+                        }
+                        
+                        isUploading = true
+                        val finalUrl = if (vehiclePhotoUri.toString().startsWith("http")) {
+                            vehiclePhotoUri.toString()
+                        } else {
+                            val result = CloudinaryUploader.uploadImage(context, vehiclePhotoUri!!, CloudinaryUploader.PRESET_RIDES)
+                            if (result is Result.Success) result.data else {
+                                error = "Upload failed"
+                                isUploading = false
+                                return@launch
+                            }
+                        }
+                        isUploading = false
+                        onUpdate(Vehicle(vehicleNumber, finalUrl))
+                    }
+                },
+                enabled = !isUploading,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = RiderPrimary)
+            ) {
+                if (isUploading) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
+                else Text("Save Changes")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = RiderTextSecondary) } }
+    )
+}
+
+@Composable
+fun RiderSectionLabel(text: String) {
+    Text(text = text, fontSize = 12.sp, color = RiderTextSecondary, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 4.dp))
+}
+
+@Composable
+fun RiderMenuRow(icon: ImageVector, iconColor: Color, label: String, subtitle: String, onClick: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .background(iconColor.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.size(46.dp).background(iconColor.copy(alpha = 0.12f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = iconColor, modifier = Modifier.size(22.dp))
             }
             Spacer(Modifier.width(14.dp))
@@ -268,31 +429,15 @@ fun RiderMenuRow(
 fun IssueHistoryItem(category: String, date: String, status: String) {
     val isResolved = status == "Resolved"
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(RiderSurface, RoundedCornerShape(12.dp))
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier.fillMaxWidth().background(RiderSurface, RoundedCornerShape(12.dp)).padding(12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
             Text(category, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = RiderTextPrimary)
             Text(date, fontSize = 12.sp, color = RiderTextSecondary)
         }
-        Box(
-            modifier = Modifier
-                .background(
-                    if (isResolved) RiderOnlineBg else AccentOrange.copy(alpha = 0.1f),
-                    RoundedCornerShape(20.dp)
-                )
-                .padding(horizontal = 10.dp, vertical = 4.dp)
-        ) {
-            Text(
-                status,
-                fontSize = 11.sp,
-                color = if (isResolved) RiderOnlineGreen else AccentOrange,
-                fontWeight = FontWeight.SemiBold
-            )
+        Box(modifier = Modifier.background(if (isResolved) RiderOnlineBg else AccentOrange.copy(alpha = 0.1f), RoundedCornerShape(20.dp)).padding(horizontal = 10.dp, vertical = 4.dp)) {
+            Text(status, fontSize = 11.sp, color = if (isResolved) RiderOnlineGreen else AccentOrange, fontWeight = FontWeight.SemiBold)
         }
     }
 }
