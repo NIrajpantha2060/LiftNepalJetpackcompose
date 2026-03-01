@@ -94,6 +94,7 @@ class RideViewModel : ViewModel() {
             _updateRideState.value = result
             if (result is Result.Success) {
                 fetchAllActiveRides()
+                fetchAllRidesForAdmin() // Refresh admin view too
             }
         }
     }

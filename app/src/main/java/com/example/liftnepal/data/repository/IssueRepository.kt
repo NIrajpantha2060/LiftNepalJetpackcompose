@@ -33,24 +33,39 @@ class IssueRepository {
         }
     }
 
-    suspend fun updateIssueStatus(issueId: String, status: String): Result<Boolean> {
+    suspend fun updateIssueStatus(issueId: String, status: String, adminRemarks: String = ""): Result<Boolean> {
         return try {
-            // Fetch issue first so we can notify the right user
+            // Fetch issue first so we know who to notify
             val snapshot = db.child("issues").child(issueId).get().await()
             val issue = snapshot.getValue(Issue::class.java)
                 ?: return Result.Error("Issue not found")
 
-            // Update status in Firebase
-            db.child("issues").child(issueId).child("status").setValue(status).await()
+            // Update status + remarks together in Firebase
+            val updates = mutableMapOf<String, Any>("status" to status)
+            if (adminRemarks.isNotBlank()) updates["adminRemarks"] = adminRemarks
+            db.child("issues").child(issueId).updateChildren(updates).await()
 
-            // Send notification to user if issue is resolved
+            // Send notification to user/rider when resolved
             if (status == "resolved" && issue.userId.isNotEmpty()) {
+                val notificationType = if (issue.userType == "rider") {
+                    "rider_issue_resolved"
+                } else {
+                    "issue_resolved"
+                }
+
+                // Include remarks in message if admin wrote one
+                val notifMessage = if (adminRemarks.isNotBlank()) {
+                    "Your issue \"${issue.title}\" has been resolved. Admin remarks: $adminRemarks"
+                } else {
+                    "Your issue \"${issue.title}\" has been reviewed and resolved by the admin."
+                }
+
                 notificationRepo.sendNotification(
                     Notification(
                         userId    = issue.userId,
                         title     = "Issue Resolved ✅",
-                        message   = "Your issue \"${issue.title}\" has been reviewed and resolved by the admin.",
-                        type      = "issue_resolved",
+                        message   = notifMessage,
+                        type      = notificationType,
                         relatedId = issueId
                     )
                 )

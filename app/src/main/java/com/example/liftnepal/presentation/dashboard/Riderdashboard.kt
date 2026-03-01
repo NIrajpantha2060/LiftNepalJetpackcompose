@@ -25,6 +25,7 @@ import com.example.liftnepal.data.utils.Result
 import com.example.liftnepal.presentation.components.BottomNavItem
 import com.example.liftnepal.presentation.dashboard.sections.*
 import com.example.liftnepal.presentation.viewmodel.AuthViewModel
+import com.example.liftnepal.presentation.viewmodel.IssueViewModel
 import com.example.liftnepal.presentation.viewmodel.NotificationViewModel
 import com.example.liftnepal.presentation.viewmodel.RideViewModel
 import com.example.liftnepal.ui.theme.*
@@ -35,7 +36,8 @@ fun RiderDashboard(
     navController: NavHostController,
     authViewModel: AuthViewModel,
     rideViewModel: RideViewModel,
-    notificationViewModel: NotificationViewModel = viewModel()
+    notificationViewModel: NotificationViewModel = viewModel(),
+    issueViewModel: IssueViewModel = viewModel()            // ✅ Added
 ) {
     var currentRoute by remember { mutableStateOf("add_ride") }
     var showNotifDialog by remember { mutableStateOf(false) }
@@ -46,12 +48,10 @@ fun RiderDashboard(
     val notifState by notificationViewModel.notifications.collectAsState()
     val unreadCount = (notifState as? Result.Success)?.data?.count { !it.isRead } ?: 0
 
-    // Initial user fetch
     LaunchedEffect(Unit) {
         authViewModel.fetchCurrentUserData()
     }
 
-    // Fetch notifications once UID is known
     LaunchedEffect(userData?.uid) {
         userData?.uid?.let { notificationViewModel.fetchNotifications(it) }
     }
@@ -95,15 +95,18 @@ fun RiderDashboard(
                 when (route) {
                     "add_ride"     -> AddRideSection(authViewModel = authViewModel, rideViewModel = rideViewModel)
                     "ride_history" -> RideHistorySection(rideViewModel = rideViewModel, authViewModel = authViewModel)
-                    "rider_issues" -> RiderIssueSection()
+                    "rider_issues" -> RiderIssueSection(        // ✅ Wired up
+                        issueViewModel = issueViewModel,
+                        currentUser    = userData
+                    )
                     "rider_menu"   -> RiderMenuSection(
-                        userName        = displayName,
-                        userEmail       = userEmail,
-                        authViewModel   = authViewModel,
-                        onSwitchToUser  = {
+                        userName       = displayName,
+                        userEmail      = userEmail,
+                        authViewModel  = authViewModel,
+                        onSwitchToUser = {
                             navController.navigate("dashboard") { popUpTo("rider_dashboard") { inclusive = true } }
                         },
-                        onLogout        = {
+                        onLogout       = {
                             authViewModel.logout()
                             navController.navigate("login") { popUpTo("rider_dashboard") { inclusive = true } }
                         }
@@ -171,7 +174,6 @@ fun RiderTopBar(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // ── Notification bell with green dot outside ──
                     Box(
                         modifier = Modifier.size(40.dp),
                         contentAlignment = Alignment.Center
@@ -190,7 +192,6 @@ fun RiderTopBar(
                                 modifier = Modifier.size(22.dp)
                             )
                         }
-                        // Green dot — disappears when unreadCount == 0
                         if (unreadCount > 0) {
                             Box(
                                 modifier = Modifier
@@ -201,7 +202,6 @@ fun RiderTopBar(
                         }
                     }
 
-                    // Profile avatar
                     Box(
                         modifier = Modifier
                             .size(40.dp)

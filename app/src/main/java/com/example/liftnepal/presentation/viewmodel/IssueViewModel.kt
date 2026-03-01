@@ -1,6 +1,5 @@
 package com.example.liftnepal.presentation.viewmodel
 
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.liftnepal.data.model.Issue
@@ -37,10 +36,11 @@ class IssueViewModel : ViewModel() {
         }
     }
 
-    fun resolveIssue(issueId: String) {
+    // ✅ Now accepts adminRemarks
+    fun resolveIssue(issueId: String, adminRemarks: String = "") {
         viewModelScope.launch {
             _updateStatusState.value = Result.Loading
-            val result = repository.updateIssueStatus(issueId, "resolved")
+            val result = repository.updateIssueStatus(issueId, "resolved", adminRemarks)
             _updateStatusState.value = result
             if (result is Result.Success) fetchAllIssues()
         }

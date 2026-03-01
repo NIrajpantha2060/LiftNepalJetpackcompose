@@ -236,7 +236,7 @@ fun DeleteConfirmDialog(userName: String, onConfirm: () -> Unit, onDismiss: () -
 @Composable
 fun AdminRidesSection(rideViewModel: RideViewModel) {
     val allRidesState by rideViewModel.allRidesState.collectAsState()
-    val deleteRideState by rideViewModel.updateRideState.collectAsState()
+    val updateRideState by rideViewModel.updateRideState.collectAsState()
 
     var selectedFilter by remember { mutableStateOf("All") }
     var selectedRide by remember { mutableStateOf<Ride?>(null) }
@@ -245,8 +245,9 @@ fun AdminRidesSection(rideViewModel: RideViewModel) {
     LaunchedEffect(Unit) { rideViewModel.fetchAllActiveRides() }
 
     // Refresh after update
-    LaunchedEffect(deleteRideState) {
-        if (deleteRideState is Result.Success) {
+    LaunchedEffect(updateRideState) {
+        if (updateRideState is Result.Success) {
+            rideViewModel.fetchAllActiveRides()
             rideViewModel.clearUpdateRideState()
         }
     }
@@ -825,8 +826,3 @@ fun VerificationReviewDialog(user: User, verification: Verification, onApprove: 
         }
     }
 }
-
-// ─────────────────────────────────────────────────────────────
-// ISSUES SECTION
-// ─────────────────────────────────────────────────────────────
-

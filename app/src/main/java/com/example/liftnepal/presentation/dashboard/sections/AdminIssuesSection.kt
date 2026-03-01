@@ -1,21 +1,15 @@
 package com.example.liftnepal.presentation.dashboard.sections
 
-// ─────────────────────────────────────────────────────────────
-// ISSUES SECTION (ADMIN)
-// Replace the existing AdminIssuesSection() placeholder at the
-// bottom of AdminSections.kt with this entire block
-// ─────────────────────────────────────────────────────────────
-
-
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -42,7 +36,7 @@ import java.util.*
 fun AdminIssuesSection(issueViewModel: IssueViewModel) {
 
     val allIssuesState by issueViewModel.allIssuesState.collectAsState()
-    var selectedTab by remember { mutableStateOf(0) }   // 0 = User Issues, 1 = Rider Issues
+    var selectedTab by remember { mutableStateOf(0) }
     var selectedIssue by remember { mutableStateOf<Issue?>(null) }
 
     LaunchedEffect(Unit) { issueViewModel.fetchAllIssues() }
@@ -55,20 +49,14 @@ fun AdminIssuesSection(issueViewModel: IssueViewModel) {
     Box(modifier = Modifier.fillMaxSize().background(AdminBg)) {
         when {
             allIssuesState is Result.Loading -> {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                    color = AdminAccent
-                )
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = AdminAccent)
             }
             allIssuesState is Result.Error -> {
                 Column(
                     modifier = Modifier.align(Alignment.Center),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        (allIssuesState as Result.Error).message,
-                        color = AdminAccent
-                    )
+                    Text((allIssuesState as Result.Error).message, color = AdminAccent)
                     Spacer(Modifier.height(8.dp))
                     Button(
                         onClick = { issueViewModel.fetchAllIssues() },
@@ -81,13 +69,8 @@ fun AdminIssuesSection(issueViewModel: IssueViewModel) {
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
-                    // Header
                     item {
-                        AdminSectionHeader(
-                            title = "Issues & Support",
-                            count = allIssues.size,
-                            icon = Icons.Default.BugReport
-                        )
+                        AdminSectionHeader("Issues & Support", allIssues.size, Icons.Default.BugReport)
                     }
 
                     // Summary row
@@ -102,26 +85,10 @@ fun AdminIssuesSection(issueViewModel: IssueViewModel) {
                                 .padding(16.dp),
                             horizontalArrangement = Arrangement.SpaceAround
                         ) {
-                            AdminIssueStat(
-                                count = allIssues.count { it.status == "open" }.toString(),
-                                label = "Open",
-                                color = Color(0xFFEF4444)
-                            )
-                            AdminIssueStat(
-                                count = allIssues.count { it.status == "resolved" }.toString(),
-                                label = "Resolved",
-                                color = Color(0xFF10B981)
-                            )
-                            AdminIssueStat(
-                                count = userIssues.size.toString(),
-                                label = "Users",
-                                color = Color(0xFF3B82F6)
-                            )
-                            AdminIssueStat(
-                                count = riderIssues.size.toString(),
-                                label = "Riders",
-                                color = Color(0xFFF59E0B)
-                            )
+                            AdminIssueStat(allIssues.count { it.status == "open" }.toString(),     "Open",     Color(0xFFEF4444))
+                            AdminIssueStat(allIssues.count { it.status == "resolved" }.toString(), "Resolved", Color(0xFF10B981))
+                            AdminIssueStat(userIssues.size.toString(),                             "Users",    Color(0xFF3B82F6))
+                            AdminIssueStat(riderIssues.size.toString(),                            "Riders",   Color(0xFFF59E0B))
                         }
                         Spacer(Modifier.height(12.dp))
                     }
@@ -137,54 +104,28 @@ fun AdminIssuesSection(issueViewModel: IssueViewModel) {
                                 .border(0.8.dp, AdminBorder, RoundedCornerShape(14.dp))
                                 .padding(4.dp)
                         ) {
-                            AdminIssueTab(
-                                label = "User Issues",
-                                count = userIssues.size,
-                                isSelected = selectedTab == 0,
-                                modifier = Modifier.weight(1f)
-                            ) { selectedTab = 0 }
-
-                            AdminIssueTab(
-                                label = "Rider Issues",
-                                count = riderIssues.size,
-                                isSelected = selectedTab == 1,
-                                modifier = Modifier.weight(1f)
-                            ) { selectedTab = 1 }
+                            AdminIssueTab("User Issues",  userIssues.size,  selectedTab == 0, Modifier.weight(1f)) { selectedTab = 0 }
+                            AdminIssueTab("Rider Issues", riderIssues.size, selectedTab == 1, Modifier.weight(1f)) { selectedTab = 1 }
                         }
                         Spacer(Modifier.height(12.dp))
                     }
 
-                    // Empty state
                     if (displayList.isEmpty()) {
                         item {
                             Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 60.dp),
+                                modifier = Modifier.fillMaxWidth().padding(top = 60.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(
-                                        Icons.Default.CheckCircle,
-                                        null,
-                                        tint = AdminTextMuted,
-                                        modifier = Modifier.size(48.dp)
-                                    )
+                                    Icon(Icons.Default.CheckCircle, null, tint = AdminTextMuted, modifier = Modifier.size(48.dp))
                                     Spacer(Modifier.height(8.dp))
-                                    Text(
-                                        "No ${if (selectedTab == 0) "user" else "rider"} issues",
-                                        color = AdminTextSecondary,
-                                        fontSize = 14.sp
-                                    )
+                                    Text("No ${if (selectedTab == 0) "user" else "rider"} issues", color = AdminTextSecondary, fontSize = 14.sp)
                                 }
                             }
                         }
                     } else {
                         items(displayList) { issue ->
-                            AdminIssueCard(
-                                issue = issue,
-                                onClick = { selectedIssue = issue }
-                            )
+                            AdminIssueCard(issue = issue, onClick = { selectedIssue = issue })
                         }
                     }
                 }
@@ -192,12 +133,11 @@ fun AdminIssuesSection(issueViewModel: IssueViewModel) {
         }
     }
 
-    // Detail dialog
     selectedIssue?.let { issue ->
         AdminIssueDetailDialog(
             issue = issue,
-            onResolve = {
-                issueViewModel.resolveIssue(issue.issueId)
+            onResolve = { remarks ->                          // ✅ receives remarks
+                issueViewModel.resolveIssue(issue.issueId, remarks)
                 selectedIssue = null
             },
             onDismiss = { selectedIssue = null }
@@ -247,10 +187,7 @@ fun AdminIssueTab(
                 Box(
                     modifier = Modifier
                         .clip(CircleShape)
-                        .background(
-                            if (isSelected) Color.White.copy(alpha = 0.25f)
-                            else AdminAccentSoft
-                        )
+                        .background(if (isSelected) Color.White.copy(alpha = 0.25f) else AdminAccentSoft)
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
@@ -274,62 +211,36 @@ fun AdminIssueCard(issue: Issue, onClick: () -> Unit) {
 
     AdminCardContainer {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onClick() },
+            modifier = Modifier.fillMaxWidth().clickable { onClick() },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // User avatar
             Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(AdminAccentSoft),
+                modifier = Modifier.size(44.dp).clip(CircleShape).background(AdminAccentSoft),
                 contentAlignment = Alignment.Center
             ) {
                 if (issue.userPhotoUrl.isNotEmpty()) {
                     AsyncImage(
                         model = issue.userPhotoUrl,
                         contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
+                        modifier = Modifier.fillMaxSize().clip(CircleShape),
                         contentScale = ContentScale.Crop
                     )
                 } else {
                     Text(
                         (issue.userName.firstOrNull() ?: "U").toString().uppercase(),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AdminAccent
+                        fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AdminAccent
                     )
                 }
             }
-
-            // Info
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    issue.userName.ifEmpty { "Unknown User" },
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = AdminTextPrimary
-                )
-                Text(
-                    issue.userPhone.ifEmpty { "No phone" },
-                    fontSize = 11.sp,
-                    color = AdminTextSecondary
-                )
+                Text(issue.userName.ifEmpty { "Unknown User" }, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = AdminTextPrimary)
+                Text(issue.userPhone.ifEmpty { "No phone" }, fontSize = 11.sp, color = AdminTextSecondary)
             }
-
-            // Status + category
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 StatusBadge(statusLabel, statusColor)
                 Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(AdminAccentSoft)
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                    modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(AdminAccentSoft).padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(issue.category, fontSize = 10.sp, color = AdminAccent)
                 }
@@ -340,19 +251,27 @@ fun AdminIssueCard(issue: Issue, onClick: () -> Unit) {
         HorizontalDivider(color = AdminBorder)
         Spacer(Modifier.height(10.dp))
 
-        Text(
-            issue.title,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = AdminTextPrimary
-        )
+        Text(issue.title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = AdminTextPrimary)
         Spacer(Modifier.height(4.dp))
-        Text(
-            issue.description,
-            fontSize = 12.sp,
-            color = AdminTextSecondary,
-            maxLines = 2
-        )
+        Text(issue.description, fontSize = 12.sp, color = AdminTextSecondary, maxLines = 2)
+
+        // Show remarks preview if resolved
+        if (issue.status == "resolved" && issue.adminRemarks.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(Icons.Default.Comment, null, tint = Color(0xFF10B981), modifier = Modifier.size(12.dp))
+                Text(
+                    issue.adminRemarks,
+                    fontSize = 11.sp,
+                    color = Color(0xFF10B981),
+                    maxLines = 1
+                )
+            }
+        }
+
         Spacer(Modifier.height(6.dp))
         Text(
             SimpleDateFormat("MMM dd, yyyy  hh:mm a", Locale.getDefault()).format(Date(issue.createdAt)),
@@ -367,11 +286,13 @@ fun AdminIssueCard(issue: Issue, onClick: () -> Unit) {
 @Composable
 fun AdminIssueDetailDialog(
     issue: Issue,
-    onResolve: () -> Unit,
+    onResolve: (String) -> Unit,          // ✅ passes remarks string
     onDismiss: () -> Unit
 ) {
     val statusColor = if (issue.status == "open") Color(0xFFEF4444) else Color(0xFF10B981)
     val statusLabel = if (issue.status == "open") "OPEN" else "RESOLVED"
+
+    var adminRemarks by remember { mutableStateOf("") }  // ✅ remarks state
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -383,6 +304,7 @@ fun AdminIssueDetailDialog(
                 .clip(RoundedCornerShape(24.dp))
                 .background(AdminCard)
                 .padding(24.dp)
+                .verticalScroll(rememberScrollState())
         ) {
             // Header
             Row(
@@ -390,12 +312,7 @@ fun AdminIssueDetailDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    "Issue Details",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AdminTextPrimary
-                )
+                Text("Issue Details", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AdminTextPrimary)
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.Default.Close, null, tint = AdminTextSecondary)
                 }
@@ -419,7 +336,7 @@ fun AdminIssueDetailDialog(
             HorizontalDivider(color = AdminBorder)
             Spacer(Modifier.height(14.dp))
 
-            // User info row
+            // User info
             Text("Raised By", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminTextMuted)
             Spacer(Modifier.height(8.dp))
             Row(
@@ -427,65 +344,33 @@ fun AdminIssueDetailDialog(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Box(
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(AdminAccentSoft),
+                    modifier = Modifier.size(52.dp).clip(CircleShape).background(AdminAccentSoft),
                     contentAlignment = Alignment.Center
                 ) {
                     if (issue.userPhotoUrl.isNotEmpty()) {
                         AsyncImage(
                             model = issue.userPhotoUrl,
                             contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape),
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
                             contentScale = ContentScale.Crop
                         )
                     } else {
                         Text(
                             (issue.userName.firstOrNull() ?: "U").toString().uppercase(),
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AdminAccent
+                            fontSize = 20.sp, fontWeight = FontWeight.Bold, color = AdminAccent
                         )
                     }
                 }
                 Column {
-                    Text(
-                        issue.userName.ifEmpty { "Unknown User" },
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.sp,
-                        color = AdminTextPrimary
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Phone,
-                            null,
-                            tint = AdminAccent,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Text(
-                            issue.userPhone.ifEmpty { "No phone" },
-                            fontSize = 12.sp,
-                            color = AdminTextSecondary
-                        )
+                    Text(issue.userName.ifEmpty { "Unknown User" }, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = AdminTextPrimary)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.Default.Phone, null, tint = AdminAccent, modifier = Modifier.size(13.dp))
+                        Text(issue.userPhone.ifEmpty { "No phone" }, fontSize = 12.sp, color = AdminTextSecondary)
                     }
                     Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(AdminAccentSoft)
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                        modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(AdminAccentSoft).padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
-                        Text(
-                            issue.userType.replaceFirstChar { it.uppercase() },
-                            fontSize = 10.sp,
-                            color = AdminAccent,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Text(issue.userType.replaceFirstChar { it.uppercase() }, fontSize = 10.sp, color = AdminAccent, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -497,19 +382,10 @@ fun AdminIssueDetailDialog(
             // Issue details
             Text("Issue", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminTextMuted)
             Spacer(Modifier.height(6.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(AdminAccentSoft).padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(AdminAccentSoft)
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Text(issue.category, fontSize = 11.sp, color = AdminAccent, fontWeight = FontWeight.SemiBold)
-                }
+                Text(issue.category, fontSize = 11.sp, color = AdminAccent, fontWeight = FontWeight.SemiBold)
             }
             Spacer(Modifier.height(8.dp))
             Text(issue.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = AdminTextPrimary)
@@ -541,6 +417,56 @@ fun AdminIssueDetailDialog(
                 )
             }
 
+            // Show existing remarks if already resolved
+            if (issue.status == "resolved" && issue.adminRemarks.isNotBlank()) {
+                Spacer(Modifier.height(14.dp))
+                HorizontalDivider(color = AdminBorder)
+                Spacer(Modifier.height(14.dp))
+                Text("Admin Remarks", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminTextMuted)
+                Spacer(Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFF10B981).copy(alpha = 0.08f))
+                        .border(1.dp, Color(0xFF10B981).copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                        .padding(12.dp)
+                ) {
+                    Text(issue.adminRemarks, fontSize = 13.sp, color = Color(0xFF10B981), lineHeight = 20.sp)
+                }
+            }
+
+            // ✅ Remarks input — only show when issue is open
+            if (issue.status == "open") {
+                Spacer(Modifier.height(14.dp))
+                HorizontalDivider(color = AdminBorder)
+                Spacer(Modifier.height(14.dp))
+                Text("Admin Remarks", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminTextMuted)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Optional — will be sent to the user in the notification",
+                    fontSize = 11.sp,
+                    color = AdminTextMuted
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = adminRemarks,
+                    onValueChange = { adminRemarks = it },
+                    placeholder = { Text("e.g. We have fixed the issue on our end...", color = AdminTextMuted) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(110.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    maxLines = 5,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AdminAccent,
+                        unfocusedBorderColor = AdminBorder,
+                        cursorColor = AdminAccent,
+                        focusedLabelColor = AdminAccent
+                    )
+                )
+            }
+
             Spacer(Modifier.height(20.dp))
 
             // Buttons
@@ -558,7 +484,7 @@ fun AdminIssueDetailDialog(
 
                 if (issue.status == "open") {
                     Button(
-                        onClick = onResolve,
+                        onClick = { onResolve(adminRemarks) },  // ✅ pass remarks
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
                         shape = RoundedCornerShape(12.dp)
