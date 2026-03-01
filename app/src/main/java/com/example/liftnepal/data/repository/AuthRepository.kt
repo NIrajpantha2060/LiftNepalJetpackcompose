@@ -1,5 +1,6 @@
 package com.example.liftnepal.data.repository
 
+import com.example.liftnepal.data.model.Notification
 import com.example.liftnepal.data.model.User
 import com.example.liftnepal.data.model.Vehicle
 import com.example.liftnepal.data.model.Verification
@@ -13,6 +14,7 @@ class AuthRepository {
 
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseDatabase.getInstance().reference
+    private val notificationRepo = NotificationRepository()
 
     val currentUser: FirebaseUser?
         get() = auth.currentUser
@@ -133,6 +135,15 @@ class AuthRepository {
                 submittedAt = System.currentTimeMillis()
             )
             db.child("verifications").child(uid).setValue(verification).await()
+            
+            // Send notification to user
+            notificationRepo.sendNotification(Notification(
+                userId = uid,
+                title = "Verification Submitted",
+                message = "Your documents have been submitted and are under review by the admin.",
+                type = "verification"
+            ))
+            
             Result.Success(true)
         } catch (e: Exception) {
             Result.Error(e.message ?: "Failed to submit verification")
@@ -164,9 +175,24 @@ class AuthRepository {
         }
     }
 
-    suspend fun updateVerificationStatus(uid: String, status: String): Result<Boolean> {
+    suspend fun updateVerificationStatus(uid: String, status: String, remarks: String = ""): Result<Boolean> {
         return try {
-            db.child("verifications").child(uid).child("status").setValue(status).await()
+            val updates = mutableMapOf<String, Any>("status" to status)
+            if (remarks.isNotEmpty()) updates["remarks"] = remarks
+            db.child("verifications").child(uid).updateChildren(updates).await()
+            
+            // Send notification to user
+            val title = if (status == "approved") "Verification Approved!" else "Verification Rejected"
+            val message = if (status == "approved") "Congratulations! You are now a verified rider." 
+                         else "Sorry, your verification was rejected. Remarks: $remarks"
+            
+            notificationRepo.sendNotification(Notification(
+                userId = uid,
+                title = title,
+                message = message,
+                type = "verification"
+            ))
+            
             Result.Success(true)
         } catch (e: Exception) {
             Result.Error(e.message ?: "Failed to update status")

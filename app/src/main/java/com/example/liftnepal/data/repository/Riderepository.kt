@@ -1,5 +1,6 @@
 package com.example.liftnepal.data.repository
 
+import com.example.liftnepal.data.model.Notification
 import com.example.liftnepal.data.model.Ride
 import com.example.liftnepal.data.utils.Result
 import com.google.firebase.database.FirebaseDatabase
@@ -8,6 +9,7 @@ import kotlinx.coroutines.tasks.await
 class RideRepository {
 
     private val db = FirebaseDatabase.getInstance().reference
+    private val notificationRepo = NotificationRepository()
 
     suspend fun addRide(ride: Ride): Result<Boolean> {
         return try {
@@ -35,7 +37,7 @@ class RideRepository {
         }
     }
 
-    // ✅ NEW: Fetch ALL rides regardless of status (for admin)
+    // ✅ NEW: Fetches ALL rides for admin regardless of status
     suspend fun getAllRides(): Result<List<Ride>> {
         return try {
             val snapshot = db.child("rides").get().await()
@@ -43,16 +45,6 @@ class RideRepository {
             Result.Success(rides.sortedByDescending { it.createdAt })
         } catch (e: Exception) {
             Result.Error(e.message ?: "Failed to fetch all rides")
-        }
-    }
-
-    // ✅ NEW: Delete a ride by ID (for admin)
-    suspend fun deleteRide(rideId: String): Result<Boolean> {
-        return try {
-            db.child("rides").child(rideId).removeValue().await()
-            Result.Success(true)
-        } catch (e: Exception) {
-            Result.Error(e.message ?: "Failed to delete ride")
         }
     }
 
@@ -88,9 +80,34 @@ class RideRepository {
 
     suspend fun updateRideStatus(rideId: String, status: String, cancelledBy: String = ""): Result<Boolean> {
         return try {
+            val snapshot = db.child("rides").child(rideId).get().await()
+            val ride = snapshot.getValue(Ride::class.java) ?: return Result.Error("Ride not found")
+
             val updates = mutableMapOf<String, Any>("status" to status)
             if (cancelledBy.isNotEmpty()) updates["cancelledBy"] = cancelledBy
             db.child("rides").child(rideId).updateChildren(updates).await()
+
+            // Notify if cancelled
+            if (status == "cancelled") {
+                if (cancelledBy == "rider" && ride.bookedBy.isNotEmpty()) {
+                    notificationRepo.sendNotification(Notification(
+                        userId = ride.bookedBy,
+                        title = "Ride Cancelled",
+                        message = "Your ride from ${ride.startLocation} has been cancelled by the rider.",
+                        type = "ride_cancelled",
+                        relatedId = rideId
+                    ))
+                } else if (cancelledBy == "passenger") {
+                    notificationRepo.sendNotification(Notification(
+                        userId = ride.riderId,
+                        title = "Booking Cancelled",
+                        message = "Your ride to ${ride.destination} was cancelled by ${ride.passengerName}.",
+                        type = "ride_cancelled",
+                        relatedId = rideId
+                    ))
+                }
+            }
+
             Result.Success(true)
         } catch (e: Exception) {
             Result.Error(e.message ?: "Failed to update ride status")
@@ -98,13 +115,16 @@ class RideRepository {
     }
 
     suspend fun bookRide(
-        rideId: String,
-        userId: String,
-        userName: String,
-        userPhone: String,
+        rideId: String, 
+        userId: String, 
+        userName: String, 
+        userPhone: String, 
         userPhotoUrl: String
     ): Result<Boolean> {
         return try {
+            val snapshot = db.child("rides").child(rideId).get().await()
+            val ride = snapshot.getValue(Ride::class.java) ?: return Result.Error("Ride not found")
+
             val updates = mapOf(
                 "bookedBy" to userId,
                 "passengerName" to userName,
@@ -113,6 +133,16 @@ class RideRepository {
                 "status" to "booked"
             )
             db.child("rides").child(rideId).updateChildren(updates).await()
+
+            // Send notification to rider
+            notificationRepo.sendNotification(Notification(
+                userId = ride.riderId,
+                title = "Ride Booked!",
+                message = "Your ride to ${ride.destination} has been booked by $userName.",
+                type = "ride_booked",
+                relatedId = rideId
+            ))
+
             Result.Success(true)
         } catch (e: Exception) {
             Result.Error(e.message ?: "Failed to book ride")
@@ -121,7 +151,12 @@ class RideRepository {
 
     suspend fun cancelBooking(rideId: String, status: String = "active", cancelledBy: String = ""): Result<Boolean> {
         return try {
-            val updates = mutableMapOf<String, Any?>("status" to status)
+            val snapshot = db.child("rides").child(rideId).get().await()
+            val ride = snapshot.getValue(Ride::class.java) ?: return Result.Error("Ride not found")
+
+            val updates = mutableMapOf<String, Any?>(
+                "status" to status
+            )
             if (status == "active") {
                 updates["bookedBy"] = ""
                 updates["passengerName"] = ""
@@ -129,10 +164,32 @@ class RideRepository {
                 updates["passengerPhotoUrl"] = ""
             }
             if (cancelledBy.isNotEmpty()) updates["cancelledBy"] = cancelledBy
+            
             db.child("rides").child(rideId).updateChildren(updates).await()
+
+            // Send notification to rider if passenger cancels a booking
+            if (cancelledBy == "passenger") {
+                notificationRepo.sendNotification(Notification(
+                    userId = ride.riderId,
+                    title = "Ride Cancelled",
+                    message = "Your booking for ride to ${ride.destination} was cancelled by ${ride.passengerName}.",
+                    type = "ride_cancelled",
+                    relatedId = rideId
+                ))
+            }
+
             Result.Success(true)
         } catch (e: Exception) {
             Result.Error(e.message ?: "Failed to cancel booking")
+        }
+    }
+
+    suspend fun deleteRide(rideId: String): Result<Boolean> {
+        return try {
+            db.child("rides").child(rideId).removeValue().await()
+            Result.Success(true)
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Failed to delete ride")
         }
     }
 }

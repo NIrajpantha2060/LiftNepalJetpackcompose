@@ -235,19 +235,19 @@ fun DeleteConfirmDialog(userName: String, onConfirm: () -> Unit, onDismiss: () -
 
 @Composable
 fun AdminRidesSection(rideViewModel: RideViewModel) {
-    val allRidesState by rideViewModel.adminAllRidesState.collectAsState()
-    val deleteRideState by rideViewModel.deleteRideState.collectAsState()
+    val allRidesState by rideViewModel.allRidesState.collectAsState()
+    val deleteRideState by rideViewModel.updateRideState.collectAsState()
 
     var selectedFilter by remember { mutableStateOf("All") }
     var selectedRide by remember { mutableStateOf<Ride?>(null) }
     var rideToDelete by remember { mutableStateOf<Ride?>(null) }
 
-    LaunchedEffect(Unit) { rideViewModel.fetchAllRidesForAdmin() }
+    LaunchedEffect(Unit) { rideViewModel.fetchAllActiveRides() }
 
-    // Refresh after delete
+    // Refresh after update
     LaunchedEffect(deleteRideState) {
         if (deleteRideState is Result.Success) {
-            rideViewModel.clearDeleteRideState()
+            rideViewModel.clearUpdateRideState()
         }
     }
 
@@ -279,7 +279,7 @@ fun AdminRidesSection(rideViewModel: RideViewModel) {
                 Column(modifier = Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text((allRidesState as Result.Error).message, color = AdminAccent)
                     Spacer(Modifier.height(8.dp))
-                    Button(onClick = { rideViewModel.fetchAllRidesForAdmin() }, colors = ButtonDefaults.buttonColors(containerColor = AdminAccent)) { Text("Retry") }
+                    Button(onClick = { rideViewModel.fetchAllActiveRides() }, colors = ButtonDefaults.buttonColors(containerColor = AdminAccent)) { Text("Retry") }
                 }
             }
             else -> {
@@ -376,7 +376,7 @@ fun AdminRidesSection(rideViewModel: RideViewModel) {
     rideToDelete?.let { ride ->
         AdminDeleteRideDialog(
             rideInfo = "${ride.startLocation} → ${ride.destination}",
-            onConfirm = { rideViewModel.deleteRide(ride.rideId); rideToDelete = null },
+            onConfirm = { rideViewModel.updateRideStatus(ride.rideId, "cancelled", "admin"); rideToDelete = null },
             onDismiss = { rideToDelete = null }
         )
     }
@@ -399,13 +399,13 @@ fun AdminRideCard(ride: Ride, statusColor: Color, onClick: () -> Unit, onDelete:
         "cancelled" -> when (ride.cancelledBy) {
             "rider"     -> "Cancelled by Rider"
             "passenger" -> "Cancelled by Passenger"
+            "admin"     -> "Cancelled by Admin"
             else        -> "Cancelled"
         }
         else -> ride.status
     }
 
     AdminCardContainer {
-        // Top row: rider avatar + name + status badge + delete
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -452,7 +452,6 @@ fun AdminRideCard(ride: Ride, statusColor: Color, onClick: () -> Unit, onDelete:
         HorizontalDivider(color = AdminBorder)
         Spacer(Modifier.height(10.dp))
 
-        // Route
         Row(
             modifier = Modifier.fillMaxWidth().clickable { onClick() },
             verticalAlignment = Alignment.CenterVertically,
@@ -467,7 +466,6 @@ fun AdminRideCard(ride: Ride, statusColor: Color, onClick: () -> Unit, onDelete:
 
         Spacer(Modifier.height(8.dp))
 
-        // Bottom row: cost + time + passenger if booked
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -509,6 +507,7 @@ fun AdminRideDetailDialog(ride: Ride, onDismiss: () -> Unit, onDelete: () -> Uni
         "cancelled" -> when (ride.cancelledBy) {
             "rider"     -> "CANCELLED BY RIDER"
             "passenger" -> "CANCELLED BY PASSENGER"
+            "admin"     -> "CANCELLED BY ADMIN"
             else        -> "CANCELLED"
         }
         else -> ride.status.uppercase()
@@ -531,13 +530,11 @@ fun AdminRideDetailDialog(ride: Ride, onDismiss: () -> Unit, onDelete: () -> Uni
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Title row
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Ride Details", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AdminTextPrimary)
                 IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, null, tint = AdminTextSecondary) }
             }
 
-            // Status banner
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -551,7 +548,6 @@ fun AdminRideDetailDialog(ride: Ride, onDismiss: () -> Unit, onDelete: () -> Uni
 
             HorizontalDivider(color = AdminBorder)
 
-            // Rider info
             Text("Rider", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminTextMuted)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(
@@ -570,7 +566,6 @@ fun AdminRideDetailDialog(ride: Ride, onDismiss: () -> Unit, onDelete: () -> Uni
                 }
             }
 
-            // Vehicle info
             HorizontalDivider(color = AdminBorder)
             Text("Vehicle", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminTextMuted)
             Text(ride.vehicleNumber, fontSize = 14.sp, color = AdminTextPrimary)
@@ -582,7 +577,6 @@ fun AdminRideDetailDialog(ride: Ride, onDismiss: () -> Unit, onDelete: () -> Uni
                 )
             }
 
-            // Passenger info (if any)
             if (ride.bookedBy.isNotEmpty()) {
                 HorizontalDivider(color = AdminBorder)
                 Text("Passenger", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminTextMuted)
@@ -604,7 +598,6 @@ fun AdminRideDetailDialog(ride: Ride, onDismiss: () -> Unit, onDelete: () -> Uni
                 }
             }
 
-            // Route details
             HorizontalDivider(color = AdminBorder)
             Text("Route", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminTextMuted)
             AdminDetailRow(Icons.Default.MyLocation,  Color(0xFF10B981), "From",    ride.startLocation)
@@ -618,7 +611,6 @@ fun AdminRideDetailDialog(ride: Ride, onDismiss: () -> Unit, onDelete: () -> Uni
                 AdminDetailRow(Icons.Default.Notes, AdminTextMuted, "Remarks", ride.remarks)
             }
 
-            // Action buttons
             Spacer(Modifier.height(4.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
@@ -634,7 +626,7 @@ fun AdminRideDetailDialog(ride: Ride, onDismiss: () -> Unit, onDelete: () -> Uni
                 ) {
                     Icon(Icons.Default.Delete, null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Delete Ride", fontWeight = FontWeight.Bold)
+                    Text("Cancel Ride", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -658,14 +650,14 @@ fun AdminDeleteRideDialog(rideInfo: String, onConfirm: () -> Unit, onDismiss: ()
         onDismissRequest = onDismiss,
         containerColor = AdminCard,
         shape = RoundedCornerShape(20.dp),
-        title = { Text("Delete Ride", fontWeight = FontWeight.Bold, color = AdminTextPrimary) },
-        text = { Text("Delete \"$rideInfo\"? This cannot be undone.", color = AdminTextSecondary) },
+        title = { Text("Cancel Ride", fontWeight = FontWeight.Bold, color = AdminTextPrimary) },
+        text = { Text("Are you sure you want to cancel this ride? This action cannot be undone.", color = AdminTextSecondary) },
         confirmButton = {
             Button(
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
                 shape = RoundedCornerShape(10.dp)
-            ) { Text("Delete", color = Color.White, fontWeight = FontWeight.SemiBold) }
+            ) { Text("Cancel Ride", color = Color.White, fontWeight = FontWeight.SemiBold) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel", color = AdminTextSecondary) }
@@ -730,7 +722,7 @@ fun AdminVerificationSection(viewModel: AuthViewModel) {
                 user = user,
                 verification = verification,
                 onApprove = { viewModel.approveVerification(verification.uid); selectedPair = null },
-                onReject = { viewModel.rejectVerification(verification.uid); selectedPair = null },
+                onReject = { remarks -> viewModel.rejectVerification(verification.uid, remarks); selectedPair = null },
                 onDismiss = { selectedPair = null }
             )
         }
@@ -771,10 +763,13 @@ fun VerificationRequestCard(user: User, verification: Verification, onReview: ()
 }
 
 @Composable
-fun VerificationReviewDialog(user: User, verification: Verification, onApprove: () -> Unit, onReject: () -> Unit, onDismiss: () -> Unit) {
+fun VerificationReviewDialog(user: User, verification: Verification, onApprove: () -> Unit, onReject: (String) -> Unit, onDismiss: () -> Unit) {
+    var remarks by remember { mutableStateOf("") }
+    var showRejectConfirm by remember { mutableStateOf(false) }
+
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
-            modifier = Modifier.fillMaxWidth(0.92f).clip(RoundedCornerShape(24.dp)).background(AdminCard).padding(24.dp),
+            modifier = Modifier.fillMaxWidth(0.92f).clip(RoundedCornerShape(24.dp)).background(AdminCard).padding(24.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text("Review Verification", fontWeight = FontWeight.Bold, color = AdminTextPrimary, fontSize = 18.sp)
@@ -796,12 +791,31 @@ fun VerificationReviewDialog(user: User, verification: Verification, onApprove: 
                 DetailItem("Submitted", SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(verification.submittedAt)))
             }
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = onReject, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)), shape = RoundedCornerShape(12.dp)) {
-                    Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Reject", fontWeight = FontWeight.SemiBold)
+            if (showRejectConfirm) {
+                OutlinedTextField(
+                    value = remarks, onValueChange = { remarks = it },
+                    label = { Text("Rejection Remarks") },
+                    placeholder = { Text("e.g. Expired license, blurry photo...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFFEF4444))
+                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(onClick = { onReject(remarks) }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)), shape = RoundedCornerShape(12.dp)) {
+                        Text("Confirm Reject", fontWeight = FontWeight.SemiBold)
+                    }
+                    OutlinedButton(onClick = { showRejectConfirm = false }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) {
+                        Text("Back", color = AdminTextSecondary)
+                    }
                 }
-                Button(onClick = onApprove, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)), shape = RoundedCornerShape(12.dp)) {
-                    Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Approve", fontWeight = FontWeight.SemiBold)
+            } else {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(onClick = { showRejectConfirm = true }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)), shape = RoundedCornerShape(12.dp)) {
+                        Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Reject", fontWeight = FontWeight.SemiBold)
+                    }
+                    Button(onClick = onApprove, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)), shape = RoundedCornerShape(12.dp)) {
+                        Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Approve", fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
 

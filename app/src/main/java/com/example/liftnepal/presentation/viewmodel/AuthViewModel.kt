@@ -191,10 +191,10 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    fun rejectVerification(uid: String) {
+    fun rejectVerification(uid: String, remarks: String) {
         viewModelScope.launch {
             _verificationUpdateState.value = Result.Loading
-            _verificationUpdateState.value = repository.updateVerificationStatus(uid, "rejected")
+            _verificationUpdateState.value = repository.updateVerificationStatus(uid, "rejected", remarks)
             fetchAllVerifications()
         }
     }
