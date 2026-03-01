@@ -42,9 +42,10 @@ fun DashboardScreen(
     authViewModel: AuthViewModel,
     rideViewModel: RideViewModel,
     notificationViewModel: NotificationViewModel = viewModel(),
-    issueViewModel: IssueViewModel = viewModel()            // ✅ Added
+    issueViewModel: IssueViewModel = viewModel()
 ) {
     var currentRoute by remember { mutableStateOf("rides") }
+    var previousRoute by remember { mutableStateOf("menu") } // To handle back from issue_history
     var showNotifDialog by remember { mutableStateOf(false) }
 
     val currentUserDataState by authViewModel.currentUserData.collectAsState()
@@ -77,32 +78,45 @@ fun DashboardScreen(
     Scaffold(
         containerColor = SurfaceVariant,
         topBar = {
-            UserTopBar(
-                currentRoute    = currentRoute,
-                userName        = displayName,
-                profilePhotoUrl = profilePhotoUrl,
-                unreadCount     = unreadCount,
-                onNotifClick    = { showNotifDialog = true }
-            )
+            if (currentRoute != "issue_history") { // Hide top bar for issue history as it has its own
+                UserTopBar(
+                    currentRoute    = currentRoute,
+                    userName        = displayName,
+                    profilePhotoUrl = profilePhotoUrl,
+                    unreadCount     = unreadCount,
+                    onNotifClick    = { showNotifDialog = true }
+                )
+            }
         },
         bottomBar = {
-            BottomNavBar(
-                items          = bottomNavItems,
-                currentRoute   = currentRoute,
-                onItemSelected = { currentRoute = it }
-            )
+            if (currentRoute != "issue_history") {
+                BottomNavBar(
+                    items          = bottomNavItems,
+                    currentRoute   = currentRoute,
+                    onItemSelected = { 
+                        previousRoute = currentRoute
+                        currentRoute = it 
+                    }
+                )
+            }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+        Box(modifier = Modifier.fillMaxSize().padding(if (currentRoute == "issue_history") PaddingValues(0.dp) else paddingValues)) {
             AnimatedContent(
                 targetState = currentRoute,
-                transitionSpec = { (fadeIn() + slideInHorizontally()).togetherWith(fadeOut() + slideOutHorizontally()) },
+                transitionSpec = { 
+                    if (targetState == "issue_history" || initialState == "issue_history") {
+                        (slideInVertically { it } + fadeIn()).togetherWith(slideOutVertically { it } + fadeOut())
+                    } else {
+                        (fadeIn() + slideInHorizontally()).togetherWith(fadeOut() + slideOutHorizontally())
+                    }
+                },
                 label = "dashboard_section"
             ) { route ->
                 when (route) {
                     "rides"    -> RidesSection(rideViewModel = rideViewModel, authViewModel = authViewModel)
                     "bookings" -> BookingsSection(rideViewModel = rideViewModel, authViewModel = authViewModel)
-                    "issues"   -> IssueSection(                                 // ✅ Updated
+                    "issues"   -> IssueSection(
                         issueViewModel = issueViewModel,
                         currentUser    = userData
                     )
@@ -117,7 +131,16 @@ fun DashboardScreen(
                         },
                         onSwitchToRider = {
                             navController.navigate("rider_dashboard") { popUpTo("dashboard") { inclusive = true } }
+                        },
+                        onIssueHistoryClick = {
+                            previousRoute = "menu"
+                            currentRoute = "issue_history"
                         }
+                    )
+                    "issue_history" -> IssueHistorySection(
+                        issueViewModel = issueViewModel,
+                        currentUser = userData,
+                        onBack = { currentRoute = previousRoute }
                     )
                 }
             }

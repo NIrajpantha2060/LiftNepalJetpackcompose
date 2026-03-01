@@ -19,13 +19,21 @@ class IssueViewModel : ViewModel() {
     private val _allIssuesState = MutableStateFlow<Result<List<Issue>>?>(null)
     val allIssuesState: StateFlow<Result<List<Issue>>?> = _allIssuesState
 
+    private val _userIssuesState = MutableStateFlow<Result<List<Issue>>?>(null)
+    val userIssuesState: StateFlow<Result<List<Issue>>?> = _userIssuesState
+
     private val _updateStatusState = MutableStateFlow<Result<Boolean>?>(null)
     val updateStatusState: StateFlow<Result<Boolean>?> = _updateStatusState
 
     fun submitIssue(issue: Issue) {
         viewModelScope.launch {
             _submitIssueState.value = Result.Loading
-            _submitIssueState.value = repository.submitIssue(issue)
+            val result = repository.submitIssue(issue)
+            _submitIssueState.value = result
+            // Refresh user issues if submission is successful
+            if (result is Result.Success) {
+                fetchUserIssues(issue.userId)
+            }
         }
     }
 
@@ -33,6 +41,13 @@ class IssueViewModel : ViewModel() {
         viewModelScope.launch {
             _allIssuesState.value = Result.Loading
             _allIssuesState.value = repository.getAllIssues()
+        }
+    }
+
+    fun fetchUserIssues(userId: String) {
+        viewModelScope.launch {
+            _userIssuesState.value = Result.Loading
+            _userIssuesState.value = repository.getIssuesByUser(userId)
         }
     }
 

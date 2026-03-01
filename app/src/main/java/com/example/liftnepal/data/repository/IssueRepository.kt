@@ -33,6 +33,19 @@ class IssueRepository {
         }
     }
 
+    suspend fun getIssuesByUser(userId: String): Result<List<Issue>> {
+        return try {
+            val snapshot = db.child("issues")
+                .orderByChild("userId")
+                .equalTo(userId)
+                .get().await()
+            val issues = snapshot.children.mapNotNull { it.getValue(Issue::class.java) }
+            Result.Success(issues.sortedByDescending { it.createdAt })
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Failed to fetch user issues")
+        }
+    }
+
     suspend fun updateIssueStatus(issueId: String, status: String, adminRemarks: String = ""): Result<Boolean> {
         return try {
             // Fetch issue first so we know who to notify

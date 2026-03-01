@@ -43,6 +43,7 @@ fun MenuSection(
     userData: User? = null,
     onLogout: () -> Unit = {},
     onSwitchToRider: () -> Unit = {},
+    onIssueHistoryClick: () -> Unit = {}, // ✅ Added
     viewModel: AuthViewModel
 ) {
     val context = LocalContext.current
@@ -251,6 +252,26 @@ fun MenuSection(
                         onClick = { viewModel.updateProfilePhoto("") }
                     )
                 }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // ── Support Section ───────────────────────────────────────
+        MenuSectionLabel("Support")
+        Spacer(Modifier.height(8.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = CardBackground),
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                MenuRow(
+                    Icons.Default.History, PrimaryColor, "Issue History", "View status of reported issues",
+                    onClick = { onIssueHistoryClick() }
+                )
             }
         }
 
