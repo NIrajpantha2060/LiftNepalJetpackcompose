@@ -40,6 +40,7 @@ fun RiderMenuSection(
     userEmail: String = "john@liftnepal.com",
     onSwitchToUser: () -> Unit = {},
     onLogout: () -> Unit = {},
+    onIssueHistoryClick: () -> Unit = {}, // ✅ Added
     authViewModel: AuthViewModel
 ) {
     val context = LocalContext.current
@@ -48,7 +49,6 @@ fun RiderMenuSection(
     val currentUserDataState by authViewModel.currentUserData.collectAsState()
     val userData = (currentUserDataState as? Result.Success)?.data
     
-    var showIssueHistory by remember { mutableStateOf(false) }
     var showVehicleDialog by remember { mutableStateOf(false) }
 
     Column(
@@ -193,7 +193,7 @@ fun RiderMenuSection(
                     iconColor = RiderSecondary,
                     label = "Issue History",
                     subtitle = "View your submitted issues",
-                    onClick = { showIssueHistory = true }
+                    onClick = { onIssueHistoryClick() }
                 )
             }
         }
@@ -279,36 +279,6 @@ fun RiderMenuSection(
             onUpdate = { vehicle ->
                 authViewModel.updateVehicleInfo(vehicle)
                 showVehicleDialog = false
-            }
-        )
-    }
-
-    // Issue History Dialog
-    if (showIssueHistory) {
-        AlertDialog(
-            onDismissRequest = { showIssueHistory = false },
-            shape = RoundedCornerShape(24.dp),
-            containerColor = RiderCardBackground,
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.History, null, tint = RiderSecondary, modifier = Modifier.size(22.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Issue History", fontWeight = FontWeight.Bold, color = RiderTextPrimary)
-                }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    IssueHistoryItem("App Bug", "Feb 23, 2026", "Resolved")
-                    IssueHistoryItem("Payment Issue", "Feb 18, 2026", "Pending")
-                    IssueHistoryItem("Technical Problem", "Feb 10, 2026", "Resolved")
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { showIssueHistory = false },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = RiderPrimary)
-                ) { Text("Close", color = Color.White) }
             }
         )
     }
@@ -422,22 +392,5 @@ fun RiderMenuRow(icon: ImageVector, iconColor: Color, label: String, subtitle: S
             }
         }
         Icon(Icons.Default.KeyboardArrowRight, null, tint = RiderUnselectedNav, modifier = Modifier.size(20.dp))
-    }
-}
-
-@Composable
-fun IssueHistoryItem(category: String, date: String, status: String) {
-    val isResolved = status == "Resolved"
-    Row(
-        modifier = Modifier.fillMaxWidth().background(RiderSurface, RoundedCornerShape(12.dp)).padding(12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column {
-            Text(category, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = RiderTextPrimary)
-            Text(date, fontSize = 12.sp, color = RiderTextSecondary)
-        }
-        Box(modifier = Modifier.background(if (isResolved) RiderOnlineBg else AccentOrange.copy(alpha = 0.1f), RoundedCornerShape(20.dp)).padding(horizontal = 10.dp, vertical = 4.dp)) {
-            Text(status, fontSize = 11.sp, color = if (isResolved) RiderOnlineGreen else AccentOrange, fontWeight = FontWeight.SemiBold)
-        }
     }
 }
