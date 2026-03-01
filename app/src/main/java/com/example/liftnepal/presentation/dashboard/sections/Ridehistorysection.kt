@@ -1,214 +1,148 @@
 package com.example.liftnepal.presentation.dashboard.sections
 
-
-
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
+import com.example.liftnepal.data.model.Ride
+import com.example.liftnepal.data.utils.Result
+import com.example.liftnepal.presentation.viewmodel.RideViewModel
+import com.example.liftnepal.presentation.viewmodel.AuthViewModel
 import com.example.liftnepal.ui.theme.*
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
-fun RideHistorySection() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(RiderBackground)
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
+fun RideHistorySection(rideViewModel: RideViewModel, authViewModel: AuthViewModel) {
+    val riderRidesState by rideViewModel.riderRidesState.collectAsState()
+    val userDataState by authViewModel.currentUserData.collectAsState()
+    val userData = (userDataState as? Result.Success)?.data
 
-        // ── Current Ride ──────────────────────────────────────
-        RiderSectionLabel("Current Ride")
+    var selectedRide by remember { mutableStateOf<Ride?>(null) }
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = RiderCardBackground),
-            elevation = CardDefaults.cardElevation(4.dp)
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .background(RiderSurface, RoundedCornerShape(12.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.TwoWheeler, null, tint = RiderPrimary, modifier = Modifier.size(24.dp))
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text("BA 1 PA 1234", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = RiderTextPrimary)
-                            Text("Active Ride", fontSize = 12.sp, color = RiderTextSecondary)
-                        }
-                    }
-                    // Active badge
-                    Box(
-                        modifier = Modifier
-                            .background(RiderOnlineBg, RoundedCornerShape(20.dp))
-                            .padding(horizontal = 12.dp, vertical = 5.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(7.dp)
-                                    .background(RiderOnlineGreen, RoundedCornerShape(50))
-                            )
-                            Spacer(Modifier.width(5.dp))
-                            Text("Active", fontSize = 12.sp, color = RiderOnlineGreen, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
+    LaunchedEffect(userData) {
+        userData?.uid?.let { rideViewModel.fetchRidesByRider(it) }
+    }
+
+    val historyRides = (riderRidesState as? Result.Success)?.data?.filter { it.status != "active" && it.status != "booked" } ?: emptyList()
+
+    Column(modifier = Modifier.fillMaxSize().background(RiderBackground).padding(16.dp)) {
+        Text("Ride History", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = RiderTextPrimary)
+        Text("Your past ride activities", fontSize = 13.sp, color = RiderTextSecondary)
+        Spacer(Modifier.height(16.dp))
+
+        if (historyRides.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.History, null, modifier = Modifier.size(64.dp), tint = RiderDivider)
+                    Text("No history found", color = RiderTextSecondary)
                 }
-
-                Spacer(Modifier.height(16.dp))
-                HorizontalDivider(color = RiderDivider, thickness = 0.8.dp)
-                Spacer(Modifier.height(14.dp))
-
-                // Route info
-                Row(verticalAlignment = Alignment.Top) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(top = 3.dp)
-                    ) {
-                        Icon(Icons.Default.MyLocation, null, tint = RiderAccentGreen, modifier = Modifier.size(16.dp))
-                        Box(
-                            modifier = Modifier
-                                .width(2.dp)
-                                .height(24.dp)
-                                .background(RiderDivider)
-                        )
-                        Icon(Icons.Default.LocationOn, null, tint = AccentRed, modifier = Modifier.size(16.dp))
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                        Column {
-                            Text("From", fontSize = 11.sp, color = RiderTextSecondary)
-                            Text("Thamel, Kathmandu", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = RiderTextPrimary)
-                        }
-                        Column {
-                            Text("To", fontSize = 11.sp, color = RiderTextSecondary)
-                            Text("New Baneshwor, Kathmandu", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = RiderTextPrimary)
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(14.dp))
-                HorizontalDivider(color = RiderDivider, thickness = 0.8.dp)
-                Spacer(Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    RideStatChip(Icons.Default.People, "2 Passengers")
-                    RideStatChip(Icons.Default.AccessTime, "Started 10 min ago")
+            }
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(historyRides) { ride -> 
+                    RiderHistoryCard(ride = ride, onClick = { selectedRide = ride }) 
                 }
             }
         }
+    }
 
-        // ── Past Rides ────────────────────────────────────────
-        RiderSectionLabel("Ride History")
-
-        val dummyRides = listOf(
-            Triple("Thamel → Bhaktapur", "Feb 24, 2026", "Completed"),
-            Triple("Lalitpur → Thamel", "Feb 22, 2026", "Completed"),
-            Triple("New Road → Airport", "Feb 19, 2026", "Cancelled"),
-            Triple("Baneshwor → Patan", "Feb 15, 2026", "Completed"),
-        )
-
-        dummyRides.forEach { (route, date, status) ->
-            PastRideCard(route = route, date = date, status = status)
-        }
-
-        Spacer(Modifier.height(8.dp))
+    if (selectedRide != null) {
+        RideHistoryDetailsDialog(ride = selectedRide!!, onDismiss = { selectedRide = null })
     }
 }
 
 @Composable
-fun RideStatChip(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .background(RiderSurface, RoundedCornerShape(10.dp))
-            .padding(horizontal = 10.dp, vertical = 6.dp)
-    ) {
-        Icon(icon, null, tint = RiderPrimary, modifier = Modifier.size(14.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(label, fontSize = 12.sp, color = RiderTextSecondary, fontWeight = FontWeight.Medium)
+fun RiderHistoryCard(ride: Ride, onClick: () -> Unit) {
+    val isCompleted = ride.status == "completed"
+    val statusText = when {
+        isCompleted -> "Completed"
+        ride.cancelledBy == "passenger" -> "Cancelled by ${ride.passengerName}"
+        else -> "You cancelled"
     }
-}
+    val statusColor = if (isCompleted) RiderAccentGreen else AccentRed
 
-@Composable
-fun PastRideCard(route: String, date: String, status: String) {
-    val isCompleted = status == "Completed"
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = RiderCardBackground),
-        elevation = CardDefaults.cardElevation(1.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            if (isCompleted) RiderSurface else AccentRed.copy(alpha = 0.08f),
-                            RoundedCornerShape(12.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        if (isCompleted) Icons.Default.CheckCircle else Icons.Default.Cancel,
-                        null,
-                        tint = if (isCompleted) RiderAccentGreen else AccentRed,
-                        modifier = Modifier.size(20.dp)
-                    )
+    Card(modifier = Modifier.fillMaxWidth().clickable { onClick() }, shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = RiderCardBackground), elevation = CardDefaults.cardElevation(1.dp)) {
+        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                Box(Modifier.size(40.dp).background(statusColor.copy(alpha = 0.1f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                    Icon(if (isCompleted) Icons.Default.CheckCircle else Icons.Default.Cancel, null, tint = statusColor, modifier = Modifier.size(20.dp))
                 }
                 Spacer(Modifier.width(12.dp))
                 Column {
-                    Text(route, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = RiderTextPrimary)
-                    Text(date, fontSize = 12.sp, color = RiderTextSecondary)
+                    Text("${ride.startLocation} → ${ride.destination}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = RiderTextPrimary, maxLines = 1)
+                    Text(SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(ride.createdAt)), fontSize = 12.sp, color = RiderTextSecondary)
                 }
             }
-            Box(
-                modifier = Modifier
-                    .background(
-                        if (isCompleted) RiderOnlineBg else AccentRed.copy(alpha = 0.08f),
-                        RoundedCornerShape(20.dp)
-                    )
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    status,
-                    fontSize = 11.sp,
-                    color = if (isCompleted) RiderOnlineGreen else AccentRed,
-                    fontWeight = FontWeight.SemiBold
-                )
+            Box(Modifier.background(statusColor.copy(alpha = 0.1f), RoundedCornerShape(20.dp)).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                Text(statusText, fontSize = 11.sp, color = statusColor, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
+fun RideHistoryDetailsDialog(ride: Ride, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = CardBackground)) {
+            Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Ride Details", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, null, tint = TextSecondary) }
+                }
+                HorizontalDivider()
+
+                if (ride.bookedBy.isNotEmpty()) {
+                    Text("Passenger Info", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Box(Modifier.size(50.dp).clip(CircleShape).background(RiderPrimary), contentAlignment = Alignment.Center) {
+                            if (ride.passengerPhotoUrl.isNotEmpty()) AsyncImage(model = ride.passengerPhotoUrl, contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
+                            else Text(ride.passengerName.firstOrNull()?.toString() ?: "P", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
+                        Column {
+                            Text(ride.passengerName, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                            Text(ride.passengerPhone, fontSize = 13.sp, color = TextSecondary)
+                        }
+                    }
+                    HorizontalDivider()
+                }
+
+                Text("Route Details", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)
+                DetailRow(Icons.Default.MyLocation, RiderAccentGreen, "From", ride.startLocation)
+                DetailRow(Icons.Default.LocationOn, AccentRed, "To", ride.destination)
+                DetailRow(Icons.Default.Place, RiderPrimary, "Pickup", ride.pickupLocation.ifEmpty { "Not specified" })
+                DetailRow(Icons.Default.AccessTime, RiderPrimary, "Time", ride.rideTime)
+                DetailRow(Icons.Default.Payments, RiderPrimary, "Cost", "NPR ${ride.cost}")
+                
+                val finalStatusText = when {
+                    ride.status == "completed" -> "COMPLETED"
+                    ride.cancelledBy == "passenger" -> "CANCELLED BY PASSENGER"
+                    else -> "CANCELLED BY YOU"
+                }
+                DetailRow(Icons.Default.Info, if (ride.status == "completed") RiderAccentGreen else AccentRed, "Final Status", finalStatusText)
+
+                Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth().height(50.dp), colors = ButtonDefaults.buttonColors(containerColor = RiderPrimary), shape = RoundedCornerShape(14.dp)) {
+                    Text("Close", fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

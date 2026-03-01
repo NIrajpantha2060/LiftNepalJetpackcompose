@@ -19,6 +19,7 @@ data class Ride(
     val cost: String = "",
 
     val status: String = "active", // active, booked, completed, cancelled
+    val cancelledBy: String = "", // rider, passenger
     val createdAt: Long = System.currentTimeMillis(),
 
     val availableSeats: Int = 1,

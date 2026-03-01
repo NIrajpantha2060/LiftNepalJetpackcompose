@@ -86,7 +86,10 @@ fun DashboardScreen(
             ) { route ->
                 when (route) {
                     "rides"    -> RidesSection(rideViewModel = rideViewModel, authViewModel = authViewModel)
-                    "bookings" -> BookingsSection()
+                    "bookings" -> BookingsSection(  // ✅ Now passes shared ViewModels
+                        rideViewModel = rideViewModel,
+                        authViewModel = authViewModel
+                    )
                     "issues"   -> IssueSection()
                     "menu"     -> MenuSection(
                         userName        = displayName,

@@ -103,7 +103,7 @@ fun RidesSection(rideViewModel: RideViewModel, authViewModel: AuthViewModel? = n
             userData = userData,
             onDismiss = { selectedRide = null },
             onBook = { rideId, user -> rideViewModel.bookRide(rideId, user) },
-            onCancelBooking = { rideId, userId -> rideViewModel.cancelBooking(rideId, userId) }
+            onCancelBooking = { rideId, userId -> rideViewModel.cancelBooking(rideId, userId, "passenger", "cancelled") }
         )
     }
 }

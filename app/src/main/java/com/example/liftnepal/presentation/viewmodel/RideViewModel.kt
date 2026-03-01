@@ -57,10 +57,15 @@ class RideViewModel : ViewModel() {
         }
     }
 
-    fun updateRideStatus(rideId: String, status: String) {
+    fun updateRideStatus(rideId: String, status: String, cancelledBy: String = "") {
         viewModelScope.launch {
             _updateRideState.value = Result.Loading
-            _updateRideState.value = repository.updateRideStatus(rideId, status)
+            val result = repository.updateRideStatus(rideId, status, cancelledBy)
+            _updateRideState.value = result
+            // Refresh lists after update
+            if (result is Result.Success) {
+                fetchAllActiveRides()
+            }
         }
     }
 
@@ -82,10 +87,10 @@ class RideViewModel : ViewModel() {
         }
     }
 
-    fun cancelBooking(rideId: String, userId: String) {
+    fun cancelBooking(rideId: String, userId: String, cancelledBy: String, newStatus: String = "cancelled") {
         viewModelScope.launch {
             _updateRideState.value = Result.Loading
-            val result = repository.cancelBooking(rideId)
+            val result = repository.cancelBooking(rideId, newStatus, cancelledBy)
             _updateRideState.value = result
             if (result is Result.Success) {
                 fetchAllActiveRides()

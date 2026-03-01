@@ -235,8 +235,24 @@ fun ActiveRideCard(ride: Ride, viewModel: RideViewModel) {
 
             Spacer(Modifier.height(24.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = { viewModel.updateRideStatus(ride.rideId, "cancelled") }, Modifier.weight(1f).height(50.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent), border = androidx.compose.foundation.BorderStroke(1.5.dp, AccentRed.copy(alpha = 0.5f)), shape = RoundedCornerShape(14.dp)) { Text("Cancel Ride", color = AccentRed, fontWeight = FontWeight.Bold) }
-                Button(onClick = { viewModel.updateRideStatus(ride.rideId, "completed") }, Modifier.weight(1f).height(50.dp), colors = ButtonDefaults.buttonColors(containerColor = RiderAccentGreen), shape = RoundedCornerShape(14.dp)) { Text(if (isBooked) "Finish Ride" else "Complete", color = Color.White, fontWeight = FontWeight.Bold) }
+                Button(
+                    // ✅ FIX: Pass "rider" as cancelledBy so passenger sees "Cancelled by Rider" in booking history
+                    onClick = { viewModel.updateRideStatus(ride.rideId, "cancelled", "rider") },
+                    Modifier.weight(1f).height(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, AccentRed.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text("Cancel Ride", color = AccentRed, fontWeight = FontWeight.Bold)
+                }
+                Button(
+                    onClick = { viewModel.updateRideStatus(ride.rideId, "completed") },
+                    Modifier.weight(1f).height(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = RiderAccentGreen),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text(if (isBooked) "Finish Ride" else "Complete", color = Color.White, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
@@ -266,7 +282,7 @@ fun AddRideForm(
     }
     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = RiderCardBackground)) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            RiderSectionLabel("Vehicle Info")
+            Text("Vehicle Info", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = RiderTextSecondary)
             OutlinedTextField(value = vehicleNumber, onValueChange = onVehicleNumberChange, label = { Text("Vehicle Number") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RiderPrimary, unfocusedBorderColor = RiderDivider))
             Box(
                 modifier = Modifier
@@ -294,12 +310,12 @@ fun AddRideForm(
             }
             if (showSaveCheckbox) { Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onSaveVehicleInfoChange(!saveVehicleInfo) }) { Checkbox(checked = saveVehicleInfo, onCheckedChange = onSaveVehicleInfoChange, colors = CheckboxDefaults.colors(checkedColor = RiderPrimary)); Text("Save vehicle info for future rides", fontSize = 13.sp, color = RiderTextSecondary) } }
             if (uploadError != null) Text(uploadError, color = AccentRed, fontSize = 12.sp)
-            RiderSectionLabel("Route & Time")
+            Text("Route & Time", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = RiderTextSecondary)
             OutlinedTextField(value = startLocation, onValueChange = onStartLocationChange, label = { Text("Starting Location") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RiderPrimary, unfocusedBorderColor = RiderDivider))
             OutlinedTextField(value = destination, onValueChange = onDestinationChange, label = { Text("Destination") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RiderPrimary, unfocusedBorderColor = RiderDivider))
             OutlinedTextField(value = pickupLocation, onValueChange = onPickupLocationChange, label = { Text("Pickup Point") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RiderPrimary, unfocusedBorderColor = RiderDivider))
             OutlinedTextField(value = rideTime, onValueChange = onRideTimeChange, label = { Text("Departure Time") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RiderPrimary, unfocusedBorderColor = DividerColor))
-            RiderSectionLabel("Pricing & Remarks")
+            Text("Pricing & Remarks", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = RiderTextSecondary)
             OutlinedTextField(value = cost, onValueChange = onCostChange, label = { Text("Cost (NPR)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RiderPrimary, unfocusedBorderColor = RiderDivider))
             OutlinedTextField(value = remarks, onValueChange = onRemarksChange, label = { Text("Remarks") }, modifier = Modifier.fillMaxWidth().height(100.dp), shape = RoundedCornerShape(14.dp), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RiderPrimary, unfocusedBorderColor = RiderDivider))
         }

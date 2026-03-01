@@ -1,58 +1,69 @@
 package com.example.liftnepal.presentation.dashboard.sections
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
+import com.example.liftnepal.data.model.Ride
+import com.example.liftnepal.data.utils.Result
+import com.example.liftnepal.presentation.viewmodel.AuthViewModel
+import com.example.liftnepal.presentation.viewmodel.RideViewModel
 import com.example.liftnepal.ui.theme.*
-
-data class UserBooking(
-    val id: String,
-    val riderName: String,
-    val from: String,
-    val to: String,
-    val date: String,
-    val time: String,
-    val price: String,
-    val status: String
-)
-
-private val myBookings = listOf(
-    UserBooking("1", "Rajesh Hamal",   "Thamel, Kathmandu", "Patan Durbar Square", "2025-06-10", "08:00 AM", "NPR 250", "Completed"),
-    UserBooking("2", "Bikash Tamang",  "New Baneshwor",     "Boudhanath Stupa",    "2025-06-11", "10:00 AM", "NPR 180", "Completed"),
-    UserBooking("3", "Sita Gurung",    "Kalimati",          "Bhaktapur Durbar",    "2025-06-13", "09:30 AM", "NPR 300", "Upcoming"),
-    UserBooking("4", "Dipak Rai",      "Maharajgunj",       "Kirtipur",            "2025-06-14", "11:00 AM", "NPR 220", "Upcoming"),
-    UserBooking("5", "Anita Shrestha", "Lazimpat",          "Swayambhunath",       "2025-06-05", "07:30 AM", "NPR 150", "Cancelled"),
-)
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
-fun BookingsSection() {
-    var selectedFilter by remember { mutableStateOf("All") }
-    val filters = listOf("All", "Upcoming", "Completed", "Cancelled")
-    val displayList = myBookings.filter { selectedFilter == "All" || it.status == selectedFilter }
+fun BookingsSection(
+    rideViewModel: RideViewModel,   // ✅ No longer uses viewModel() default — must receive shared instance
+    authViewModel: AuthViewModel    // ✅ No longer uses viewModel() default — must receive shared instance
+) {
+    val myBookingsState by rideViewModel.myBookingsState.collectAsState()
+    val userDataState by authViewModel.currentUserData.collectAsState()
+    val userData = (userDataState as? Result.Success)?.data
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(SurfaceVariant)
-            .padding(16.dp)
-    ) {
-        Text("My Bookings", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-        Text("Your ride booking history", fontSize = 13.sp, color = TextSecondary)
+    var selectedFilter by remember { mutableStateOf("All") }
+    var selectedRide by remember { mutableStateOf<Ride?>(null) }
+
+    LaunchedEffect(userData) {
+        userData?.uid?.let { rideViewModel.fetchMyBookings(it) }
+    }
+
+    // Only show completed or cancelled rides in the history section
+    val historyBookings = (myBookingsState as? Result.Success)?.data?.filter {
+        it.status == "completed" || it.status == "cancelled"
+    } ?: emptyList()
+
+    val filteredList = when (selectedFilter) {
+        "Completed" -> historyBookings.filter { it.status == "completed" }
+        "Cancelled" -> historyBookings.filter { it.status == "cancelled" }
+        else        -> historyBookings
+    }
+
+    Column(modifier = Modifier.fillMaxSize().background(SurfaceVariant).padding(16.dp)) {
+        Text("Booking History", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+        Text("Track your past trip outcomes", fontSize = 13.sp, color = TextSecondary)
         Spacer(Modifier.height(14.dp))
 
-        // Summary banner — now uses red primary color
+        // Summary banner
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
@@ -63,30 +74,25 @@ fun BookingsSection() {
                 modifier = Modifier.fillMaxWidth().padding(20.dp),
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
-                MyBookingSummary("5", "Total")
-                MyBookingSummary("2", "Upcoming")
-                MyBookingSummary("2", "Completed")
-                MyBookingSummary("1", "Cancelled")
+                BookingStat(historyBookings.size.toString(), "Total")
+                BookingStat(historyBookings.count { it.status == "completed" }.toString(), "Done")
+                BookingStat(historyBookings.count { it.status == "cancelled" }.toString(), "Cancelled")
             }
         }
 
         Spacer(Modifier.height(14.dp))
 
-        // Filter chips
+        // Filters
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            filters.forEach { filter ->
+            listOf("All", "Completed", "Cancelled").forEach { filter ->
                 val isSelected = filter == selectedFilter
                 FilterChip(
                     selected = isSelected,
                     onClick = { selectedFilter = filter },
-                    label = {
-                        Text(filter, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
-                    },
+                    label = { Text(filter, fontSize = 12.sp) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = PrimaryColor,
-                        selectedLabelColor = CardBackground,
-                        containerColor = CardBackground,
-                        labelColor = TextSecondary
+                        selectedLabelColor = Color.White
                     )
                 )
             }
@@ -94,47 +100,56 @@ fun BookingsSection() {
 
         Spacer(Modifier.height(12.dp))
 
-        if (displayList.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.EventBusy, null, tint = UnselectedNavItem, modifier = Modifier.size(48.dp))
-                    Spacer(Modifier.height(8.dp))
-                    Text("No bookings found", color = TextSecondary, fontSize = 15.sp)
+        when {
+            myBookingsState is Result.Loading -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = PrimaryColor)
                 }
             }
-        } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(displayList) { MyBookingCard(it) }
+            filteredList.isEmpty() -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.History, null, tint = UnselectedNavItem, modifier = Modifier.size(48.dp))
+                        Spacer(Modifier.height(8.dp))
+                        Text("No history found", color = TextSecondary)
+                    }
+                }
+            }
+            else -> {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(filteredList) { ride ->
+                        BookingCard(ride = ride, onClick = { selectedRide = ride })
+                    }
+                }
             }
         }
     }
+
+    if (selectedRide != null) {
+        BookingDetailsDialog(ride = selectedRide!!, onDismiss = { selectedRide = null })
+    }
 }
 
 @Composable
-fun MyBookingSummary(count: String, label: String) {
+fun BookingStat(count: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(count, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = CardBackground)
-        Text(label, fontSize = 11.sp, color = CardBackground.copy(alpha = 0.85f))
+        Text(count, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text(label, fontSize = 11.sp, color = Color.White.copy(alpha = 0.8f))
     }
 }
 
 @Composable
-fun MyBookingCard(booking: UserBooking) {
-    val statusColor = when (booking.status) {
-        "Completed" -> AccentGreen       // Green for completed
-        "Upcoming"  -> AccentBrightBlue  // Bright Blue for upcoming
-        "Cancelled" -> AccentRed         // Red for cancelled
-        else        -> TextSecondary
-    }
-    val statusIcon = when (booking.status) {
-        "Completed" -> Icons.Default.CheckCircle
-        "Upcoming"  -> Icons.Default.Schedule
-        "Cancelled" -> Icons.Default.Cancel
-        else        -> Icons.Default.Info
+fun BookingCard(ride: Ride, onClick: () -> Unit) {
+    val statusColor = if (ride.status == "completed") AccentGreen else AccentRed
+
+    val statusText = when {
+        ride.status == "completed"     -> "Completed"
+        ride.cancelledBy == "rider"    -> "Cancelled by Rider"
+        else                           -> "You cancelled"
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = CardBackground),
         elevation = CardDefaults.cardElevation(2.dp)
@@ -147,28 +162,36 @@ fun MyBookingCard(booking: UserBooking) {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(PrimaryColor.copy(alpha = 0.12f), CircleShape),
+                        Modifier.size(40.dp).clip(CircleShape).background(PrimaryColor.copy(alpha = 0.1f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Person, null, tint = PrimaryColor, modifier = Modifier.size(20.dp))
+                        if (ride.riderPhotoUrl.isNotEmpty()) {
+                            AsyncImage(
+                                model = ride.riderPhotoUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(Icons.Default.Person, null, tint = PrimaryColor)
+                        }
                     }
                     Spacer(Modifier.width(10.dp))
                     Column {
-                        Text(booking.riderName, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextPrimary)
-                        Text("Booking #${booking.id}", fontSize = 12.sp, color = TextSecondary)
+                        Text(ride.riderName, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextPrimary)
+                        Text(
+                            SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(ride.createdAt)),
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
                     }
                 }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                Box(
                     modifier = Modifier
-                        .background(statusColor.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
-                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                        .background(statusColor.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
-                    Icon(statusIcon, null, tint = statusColor, modifier = Modifier.size(13.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(booking.status, fontSize = 12.sp, color = statusColor, fontWeight = FontWeight.SemiBold)
+                    Text(statusText, fontSize = 11.sp, color = statusColor, fontWeight = FontWeight.SemiBold)
                 }
             }
 
@@ -176,46 +199,116 @@ fun MyBookingCard(booking: UserBooking) {
             HorizontalDivider(color = DividerColor)
             Spacer(Modifier.height(12.dp))
 
-            // From → To
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.LocationOn, null, tint = PrimaryColor, modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(booking.from, fontSize = 13.sp, color = TextPrimary)
-            }
-            Row { Spacer(Modifier.width(7.dp)); Box(Modifier.width(2.dp).height(14.dp).background(DividerColor)) }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.LocationOn, null, tint = AccentDarkBlue, modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(booking.to, fontSize = 13.sp, color = TextPrimary)
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    RideInfoChip(icon = Icons.Default.DateRange, label = booking.date)
-                    RideInfoChip(icon = Icons.Default.AccessTime, label = booking.time)
-                }
-                Text(booking.price, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = PrimaryColor)
+            Text(
+                "${ride.startLocation} → ${ride.destination}",
+                fontSize = 13.sp,
+                color = TextPrimary,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("NPR ${ride.cost}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = PrimaryColor)
+                Text("View Details", fontSize = 12.sp, color = AccentBrightBlue)
             }
         }
     }
 }
 
 @Composable
-fun RideInfoChip(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .background(SurfaceVariant, RoundedCornerShape(10.dp))
-            .padding(horizontal = 10.dp, vertical = 6.dp)
-    ) {
-        Icon(icon, null, tint = PrimaryColor, modifier = Modifier.size(14.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(label, fontSize = 12.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
+fun BookingDetailsDialog(ride: Ride, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = CardBackground)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Trip Details", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    IconButton(onClick = onDismiss) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = null, tint = TextSecondary)
+                    }
+                }
+                HorizontalDivider()
+
+                Text("Rider Information", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        Modifier.size(50.dp).clip(CircleShape).background(PrimaryColor),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (ride.riderPhotoUrl.isNotEmpty()) {
+                            AsyncImage(
+                                model = ride.riderPhotoUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Text(
+                                ride.riderName.firstOrNull()?.toString() ?: "R",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Column {
+                        Text(ride.riderName, fontWeight = FontWeight.Bold)
+                        Text(ride.riderPhone, fontSize = 13.sp, color = TextSecondary)
+                    }
+                }
+
+                HorizontalDivider()
+                Text("Vehicle Info", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text("Vehicle Number: ${ride.vehicleNumber}", fontSize = 14.sp)
+                if (ride.vehiclePhotoUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = ride.vehiclePhotoUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                HorizontalDivider()
+                Text("Route Details", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                DetailRow(Icons.Default.MyLocation, AccentGreen, "From", ride.startLocation)
+                DetailRow(Icons.Default.LocationOn, AccentRed, "To", ride.destination)
+                DetailRow(Icons.Default.Place, PrimaryColor, "Pickup", ride.pickupLocation)
+                DetailRow(Icons.Default.AccessTime, PrimaryColor, "Time", ride.rideTime)
+                DetailRow(Icons.Default.Payments, PrimaryColor, "Cost", "NPR ${ride.cost}")
+
+                val finalStatus = when {
+                    ride.status == "completed"  -> "COMPLETED"
+                    ride.cancelledBy == "rider" -> "CANCELLED BY RIDER"
+                    else                        -> "CANCELLED BY YOU"
+                }
+                DetailRow(
+                    Icons.Default.Info,
+                    if (ride.status == "completed") AccentGreen else AccentRed,
+                    "Outcome",
+                    finalStatus
+                )
+
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Close", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
     }
 }

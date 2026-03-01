@@ -82,7 +82,10 @@ fun RiderDashboard(
                         authViewModel = authViewModel,
                         rideViewModel = rideViewModel
                     )
-                    "ride_history" -> RideHistorySection()
+                    "ride_history" -> RideHistorySection(
+                        rideViewModel = rideViewModel,
+                        authViewModel = authViewModel
+                    )
                     "rider_issues" -> RiderIssueSection()
                     "rider_menu"   -> RiderMenuSection(
                         userName = displayName,
