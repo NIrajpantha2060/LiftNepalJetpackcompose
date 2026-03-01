@@ -17,9 +17,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.liftnepal.presentation.dashboard.sections.*
 import com.example.liftnepal.presentation.viewmodel.AuthViewModel
+import com.example.liftnepal.presentation.viewmodel.IssueViewModel
 import com.example.liftnepal.presentation.viewmodel.RideViewModel
 import com.example.liftnepal.ui.theme.*
 
@@ -34,7 +36,8 @@ data class AdminNavItem(
 fun AdminDashboard(
     navController: NavHostController,
     viewModel: AuthViewModel,
-    rideViewModel: RideViewModel  // ✅ Added
+    rideViewModel: RideViewModel,
+    issueViewModel: IssueViewModel = viewModel()   // ✅ Added
 ) {
     var currentRoute by remember { mutableStateOf("users") }
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -90,9 +93,9 @@ fun AdminDashboard(
             ) { route ->
                 when (route) {
                     "users"        -> AdminUsersSection(viewModel)
-                    "rides"        -> AdminRidesSection(rideViewModel)  // ✅ Pass rideViewModel
+                    "rides"        -> AdminRidesSection(rideViewModel)
                     "verification" -> AdminVerificationSection(viewModel)
-                    "issues"       -> AdminIssuesSection()
+                    "issues"       -> AdminIssuesSection(issueViewModel)  // ✅ Wired up
                 }
             }
         }

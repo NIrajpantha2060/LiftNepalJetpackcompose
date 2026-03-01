@@ -30,6 +30,7 @@ import com.example.liftnepal.presentation.components.BottomNavBar
 import com.example.liftnepal.presentation.components.BottomNavItem
 import com.example.liftnepal.presentation.dashboard.sections.*
 import com.example.liftnepal.presentation.viewmodel.AuthViewModel
+import com.example.liftnepal.presentation.viewmodel.IssueViewModel
 import com.example.liftnepal.presentation.viewmodel.NotificationViewModel
 import com.example.liftnepal.presentation.viewmodel.RideViewModel
 import com.example.liftnepal.ui.theme.*
@@ -40,7 +41,8 @@ fun DashboardScreen(
     navController: NavHostController,
     authViewModel: AuthViewModel,
     rideViewModel: RideViewModel,
-    notificationViewModel: NotificationViewModel = viewModel()
+    notificationViewModel: NotificationViewModel = viewModel(),
+    issueViewModel: IssueViewModel = viewModel()            // ✅ Added
 ) {
     var currentRoute by remember { mutableStateOf("rides") }
     var showNotifDialog by remember { mutableStateOf(false) }
@@ -100,7 +102,10 @@ fun DashboardScreen(
                 when (route) {
                     "rides"    -> RidesSection(rideViewModel = rideViewModel, authViewModel = authViewModel)
                     "bookings" -> BookingsSection(rideViewModel = rideViewModel, authViewModel = authViewModel)
-                    "issues"   -> IssueSection()
+                    "issues"   -> IssueSection(                                 // ✅ Updated
+                        issueViewModel = issueViewModel,
+                        currentUser    = userData
+                    )
                     "menu"     -> MenuSection(
                         userName        = displayName,
                         userEmail       = userEmail,
@@ -149,7 +154,6 @@ fun UserTopBar(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left title
                 if (currentRoute == "rides") {
                     Column {
                         Text("Hello,", fontSize = 13.sp, color = TextSecondary)
@@ -178,7 +182,7 @@ fun UserTopBar(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // ── Notification bell with green dot outside ──
+                    // Notification bell
                     Box(
                         modifier = Modifier.size(40.dp),
                         contentAlignment = Alignment.Center
@@ -197,7 +201,6 @@ fun UserTopBar(
                                 modifier = Modifier.size(22.dp)
                             )
                         }
-                        // Green dot — disappears when unreadCount == 0
                         if (unreadCount > 0) {
                             Box(
                                 modifier = Modifier
@@ -263,7 +266,6 @@ fun NotificationDialog(
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
 
-                // ── Header row ──
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -280,7 +282,6 @@ fun NotificationDialog(
                     }
                 }
 
-                // ── Mark all as read ──
                 if (hasUnread) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -307,7 +308,6 @@ fun NotificationDialog(
                 HorizontalDivider(color = DividerColor)
                 Spacer(Modifier.height(10.dp))
 
-                // ── Content ──
                 when (val state = notifState) {
                     is Result.Loading -> {
                         Box(

@@ -21,6 +21,8 @@ object CloudinaryUploader {
     const val PRESET_PROFILES = "liftnepal_profiles"
     const val PRESET_RIDES    = "liftnepal_rides"     // for future use
 
+    const val PRESET_ISSUES   = "liftnepal_issues"
+
     suspend fun uploadImage(context: Context, imageUri: Uri, preset: String): Result<String> {
         return withContext(Dispatchers.IO) {
             try {

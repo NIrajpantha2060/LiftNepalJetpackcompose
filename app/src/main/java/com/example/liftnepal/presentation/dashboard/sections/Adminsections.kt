@@ -830,9 +830,3 @@ fun VerificationReviewDialog(user: User, verification: Verification, onApprove: 
 // ISSUES SECTION
 // ─────────────────────────────────────────────────────────────
 
-@Composable
-fun AdminIssuesSection() {
-    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Issues & Support coming soon...", color = AdminTextSecondary)
-    }
-}
