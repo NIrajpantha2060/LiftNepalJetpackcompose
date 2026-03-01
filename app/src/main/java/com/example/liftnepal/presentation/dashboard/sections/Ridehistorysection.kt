@@ -90,7 +90,8 @@ fun RiderHistoryCard(ride: Ride, onClick: () -> Unit) {
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text("${ride.startLocation} → ${ride.destination}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = RiderTextPrimary, maxLines = 1)
-                    Text(SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(ride.createdAt)), fontSize = 12.sp, color = RiderTextSecondary)
+                    Text("ID: ${ride.rideId}", fontSize = 11.sp, color = RiderPrimary, fontWeight = FontWeight.Bold)
+                    Text(SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(ride.createdAt)), fontSize = 11.sp, color = RiderTextSecondary)
                 }
             }
             Box(Modifier.background(statusColor.copy(alpha = 0.1f), RoundedCornerShape(20.dp)).padding(horizontal = 10.dp, vertical = 4.dp)) {
@@ -110,6 +111,8 @@ fun RideHistoryDetailsDialog(ride: Ride, onDismiss: () -> Unit) {
                     IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, null, tint = TextSecondary) }
                 }
                 HorizontalDivider()
+
+                DetailRow(Icons.Default.Fingerprint, RiderPrimary, "Ride ID", ride.rideId)
 
                 if (ride.bookedBy.isNotEmpty()) {
                     Text("Passenger Info", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)

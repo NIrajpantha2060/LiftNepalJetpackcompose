@@ -61,7 +61,7 @@ fun AdminSectionHeader(title: String, count: Int, icon: ImageVector) {
                     .background(AdminAccentSoft),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = AdminAccent, modifier = Modifier.size(18.dp))
+                Icon(imageVector = icon, contentDescription = null, tint = AdminAccent, modifier = Modifier.size(18.dp))
             }
             Text(title, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AdminTextPrimary)
         }
@@ -155,7 +155,7 @@ fun AdminUsersSection(viewModel: AuthViewModel) {
                                     }
                                 }
                                 IconButton(onClick = { userToDelete = user }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = AdminAccent, modifier = Modifier.size(20.dp))
+                                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = AdminAccent, modifier = Modifier.size(20.dp))
                                 }
                             }
                         }
@@ -230,39 +230,28 @@ fun DeleteConfirmDialog(userName: String, onConfirm: () -> Unit, onDismiss: () -
 }
 
 // ─────────────────────────────────────────────────────────────
-// RIDES SECTION (ADMIN) — ✅ FIXED: now uses adminAllRidesState + fetchAllRidesForAdmin()
+// RIDES SECTION (ADMIN) — ✅ FIXED: search + filter inside Result.Success
 // ─────────────────────────────────────────────────────────────
 
 @Composable
 fun AdminRidesSection(rideViewModel: RideViewModel) {
-    val allRidesState by rideViewModel.adminAllRidesState.collectAsState()  // ✅ FIXED
+    val allRidesState by rideViewModel.adminAllRidesState.collectAsState()
     val updateRideState by rideViewModel.updateRideState.collectAsState()
 
     var selectedFilter by remember { mutableStateOf("All") }
     var selectedRide by remember { mutableStateOf<Ride?>(null) }
     var rideToDelete by remember { mutableStateOf<Ride?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) { rideViewModel.fetchAllRidesForAdmin() }  // ✅ FIXED
+    LaunchedEffect(Unit) { rideViewModel.fetchAllRidesForAdmin() }
 
-    // Refresh after update
     LaunchedEffect(updateRideState) {
         if (updateRideState is Result.Success) {
-            rideViewModel.fetchAllRidesForAdmin()  // ✅ FIXED
+            rideViewModel.fetchAllRidesForAdmin()
             rideViewModel.clearUpdateRideState()
         }
     }
 
-    val allRides = (allRidesState as? Result.Success)?.data ?: emptyList()
-
-    val filteredRides = when (selectedFilter) {
-        "Active"    -> allRides.filter { it.status == "active" }
-        "Booked"    -> allRides.filter { it.status == "booked" }
-        "Completed" -> allRides.filter { it.status == "completed" }
-        "Cancelled" -> allRides.filter { it.status == "cancelled" }
-        else        -> allRides
-    }
-
-    // Status color helper
     fun statusColor(status: String) = when (status) {
         "active"    -> Color(0xFF3B82F6)
         "booked"    -> Color(0xFFF59E0B)
@@ -272,25 +261,76 @@ fun AdminRidesSection(rideViewModel: RideViewModel) {
     }
 
     Box(modifier = Modifier.fillMaxSize().background(AdminBg)) {
-        when {
-            allRidesState is Result.Loading -> {
+        when (val state = allRidesState) {
+            is Result.Loading -> {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = AdminAccent)
             }
-            allRidesState is Result.Error -> {
+            is Result.Error -> {
                 Column(modifier = Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text((allRidesState as Result.Error).message, color = AdminAccent)
+                    Text(state.message, color = AdminAccent)
                     Spacer(Modifier.height(8.dp))
-                    Button(onClick = { rideViewModel.fetchAllRidesForAdmin() }, colors = ButtonDefaults.buttonColors(containerColor = AdminAccent)) { Text("Retry") }  // ✅ FIXED
+                    Button(
+                        onClick = { rideViewModel.fetchAllRidesForAdmin() },
+                        colors = ButtonDefaults.buttonColors(containerColor = AdminAccent)
+                    ) { Text("Retry") }
                 }
             }
-            else -> {
+            is Result.Success -> {
+                // ✅ Both allRides and filteredRides computed inside Success — search now works
+                val allRides = state.data
+
+                val filteredRides = allRides.filter { ride ->
+                    val statusMatch = when (selectedFilter) {
+                        "Active"    -> ride.status == "active"
+                        "Booked"    -> ride.status == "booked"
+                        "Completed" -> ride.status == "completed"
+                        "Cancelled" -> ride.status == "cancelled"
+                        else        -> true
+                    }
+                    val searchMatch = searchQuery.isEmpty() ||
+                            ride.rideId.contains(searchQuery, ignoreCase = true) ||
+                            ride.riderName.contains(searchQuery, ignoreCase = true) ||
+                            ride.passengerName.contains(searchQuery, ignoreCase = true)
+
+                    statusMatch && searchMatch
+                }
+
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
-                    // Header
                     item {
-                        AdminSectionHeader("All Rides", filteredRides.size, Icons.Default.DirectionsCar)
+                        AdminSectionHeader("Ride History", allRides.size, Icons.Default.DirectionsCar)
+                    }
+
+                    // Search Bar
+                    item {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 8.dp),
+                            placeholder = { Text("Search by Ride ID or Name", fontSize = 14.sp) },
+                            leadingIcon = {
+                                Icon(imageVector = Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp))
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(imageVector = Icons.Default.Close, contentDescription = null)
+                                    }
+                                }
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = AdminCard,
+                                unfocusedContainerColor = AdminCard,
+                                focusedBorderColor = AdminAccent,
+                                unfocusedBorderColor = AdminBorder
+                            )
+                        )
                     }
 
                     // Summary stats row
@@ -298,7 +338,7 @@ fun AdminRidesSection(rideViewModel: RideViewModel) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp)
+                                .padding(horizontal = 20.dp, vertical = 4.dp)
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(AdminCard)
                                 .border(0.8.dp, AdminBorder, RoundedCornerShape(16.dp))
@@ -310,7 +350,7 @@ fun AdminRidesSection(rideViewModel: RideViewModel) {
                             AdminRideStat(allRides.count { it.status == "completed" }.toString(), "Done",      Color(0xFF10B981))
                             AdminRideStat(allRides.count { it.status == "cancelled" }.toString(), "Cancelled", Color(0xFFEF4444))
                         }
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(8.dp))
                     }
 
                     // Filter chips
@@ -343,9 +383,9 @@ fun AdminRidesSection(rideViewModel: RideViewModel) {
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Default.DirectionsCar, null, tint = AdminTextMuted, modifier = Modifier.size(48.dp))
+                                    Icon(imageVector = Icons.Default.SearchOff, contentDescription = null, tint = AdminTextMuted, modifier = Modifier.size(48.dp))
                                     Spacer(Modifier.height(8.dp))
-                                    Text("No rides found", color = AdminTextSecondary, fontSize = 14.sp)
+                                    Text("No matching rides found", color = AdminTextSecondary, fontSize = 14.sp)
                                 }
                             }
                         }
@@ -361,10 +401,10 @@ fun AdminRidesSection(rideViewModel: RideViewModel) {
                     }
                 }
             }
+            else -> {}
         }
     }
 
-    // Detail dialog
     selectedRide?.let { ride ->
         AdminRideDetailDialog(
             ride = ride,
@@ -373,7 +413,6 @@ fun AdminRidesSection(rideViewModel: RideViewModel) {
         )
     }
 
-    // Delete confirm dialog
     rideToDelete?.let { ride ->
         AdminDeleteRideDialog(
             rideInfo = "${ride.startLocation} → ${ride.destination}",
@@ -437,14 +476,14 @@ fun AdminRideCard(ride: Ride, statusColor: Color, onClick: () -> Unit, onDelete:
                 }
                 Column {
                     Text(ride.riderName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = AdminTextPrimary)
-                    Text(ride.riderPhone.ifEmpty { "No phone" }, fontSize = 11.sp, color = AdminTextSecondary)
+                    Text("Ride ID: ${ride.rideId}", fontSize = 10.sp, color = AdminAccent, fontWeight = FontWeight.Bold)
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 StatusBadge(statusLabel, statusColor)
                 Spacer(Modifier.width(4.dp))
                 IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Delete, null, tint = Color(0xFFEF4444), modifier = Modifier.size(18.dp))
+                    Icon(imageVector = Icons.Default.Delete, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -458,10 +497,10 @@ fun AdminRideCard(ride: Ride, statusColor: Color, onClick: () -> Unit, onDelete:
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(Icons.Default.MyLocation, null, tint = Color(0xFF10B981), modifier = Modifier.size(14.dp))
+            Icon(imageVector = Icons.Default.MyLocation, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(14.dp))
             Text(ride.startLocation, fontSize = 12.sp, color = AdminTextPrimary, modifier = Modifier.weight(1f))
-            Icon(Icons.Default.ArrowForward, null, tint = AdminTextMuted, modifier = Modifier.size(12.dp))
-            Icon(Icons.Default.LocationOn, null, tint = Color(0xFFEF4444), modifier = Modifier.size(14.dp))
+            Icon(imageVector = Icons.Default.ArrowForward, contentDescription = null, tint = AdminTextMuted, modifier = Modifier.size(12.dp))
+            Icon(imageVector = Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(14.dp))
             Text(ride.destination, fontSize = 12.sp, color = AdminTextPrimary, modifier = Modifier.weight(1f))
         }
 
@@ -474,17 +513,17 @@ fun AdminRideCard(ride: Ride, statusColor: Color, onClick: () -> Unit, onDelete:
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(Icons.Default.Payments, null, tint = AdminAccent, modifier = Modifier.size(14.dp))
+                    Icon(imageVector = Icons.Default.Payments, contentDescription = null, tint = AdminAccent, modifier = Modifier.size(14.dp))
                     Text("NPR ${ride.cost}", fontSize = 12.sp, color = AdminTextPrimary, fontWeight = FontWeight.SemiBold)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(Icons.Default.AccessTime, null, tint = AdminTextMuted, modifier = Modifier.size(14.dp))
+                    Icon(imageVector = Icons.Default.AccessTime, contentDescription = null, tint = AdminTextMuted, modifier = Modifier.size(14.dp))
                     Text(ride.rideTime, fontSize = 12.sp, color = AdminTextSecondary)
                 }
             }
             if (ride.bookedBy.isNotEmpty()) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(Icons.Default.Person, null, tint = Color(0xFFF59E0B), modifier = Modifier.size(14.dp))
+                    Icon(imageVector = Icons.Default.Person, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(14.dp))
                     Text(ride.passengerName, fontSize = 11.sp, color = AdminTextSecondary)
                 }
             }
@@ -522,112 +561,118 @@ fun AdminRideDetailDialog(ride: Ride, onDismiss: () -> Unit, onDelete: () -> Uni
     }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(
+        Card(
             modifier = Modifier
                 .fillMaxWidth(0.94f)
-                .clip(RoundedCornerShape(24.dp))
-                .background(AdminCard)
-                .padding(24.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .clip(RoundedCornerShape(24.dp)),
+            colors = CardDefaults.cardColors(containerColor = AdminCard)
         ) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Ride Details", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AdminTextPrimary)
-                IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, null, tint = AdminTextSecondary) }
-            }
-
-            Box(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(statusColor.copy(alpha = 0.12f))
-                    .padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center
+                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Text(statusLabel, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = statusColor)
-            }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Ride Details", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AdminTextPrimary)
+                    IconButton(onClick = onDismiss) { Icon(imageVector = Icons.Default.Close, contentDescription = null, tint = AdminTextSecondary) }
+                }
 
-            HorizontalDivider(color = AdminBorder)
-
-            Text("Rider", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminTextMuted)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(
-                    modifier = Modifier.size(48.dp).clip(CircleShape).background(AdminAccentSoft),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(statusColor.copy(alpha = 0.12f))
+                        .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (ride.riderPhotoUrl.isNotEmpty()) {
-                        AsyncImage(model = ride.riderPhotoUrl, contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
-                    } else {
-                        Text(ride.riderName.firstOrNull()?.toString() ?: "R", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AdminAccent)
-                    }
+                    Text(statusLabel, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = statusColor)
                 }
-                Column {
-                    Text(ride.riderName, fontWeight = FontWeight.SemiBold, color = AdminTextPrimary)
-                    Text(ride.riderPhone.ifEmpty { "No phone" }, fontSize = 12.sp, color = AdminTextSecondary)
-                }
-            }
 
-            HorizontalDivider(color = AdminBorder)
-            Text("Vehicle", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminTextMuted)
-            Text(ride.vehicleNumber, fontSize = 14.sp, color = AdminTextPrimary)
-            if (ride.vehiclePhotoUrl.isNotEmpty()) {
-                AsyncImage(
-                    model = ride.vehiclePhotoUrl, contentDescription = null,
-                    modifier = Modifier.fillMaxWidth().height(140.dp).clip(RoundedCornerShape(12.dp)),
-                    contentScale = ContentScale.Crop
-                )
-            }
-
-            if (ride.bookedBy.isNotEmpty()) {
                 HorizontalDivider(color = AdminBorder)
-                Text("Passenger", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminTextMuted)
+                DetailItem("Ride ID", ride.rideId)
+                HorizontalDivider(color = AdminBorder)
+
+                Text("Rider", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminTextMuted)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(
-                        modifier = Modifier.size(48.dp).clip(CircleShape).background(Color(0xFFF59E0B).copy(alpha = 0.15f)),
+                        modifier = Modifier.size(48.dp).clip(CircleShape).background(AdminAccentSoft),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (ride.passengerPhotoUrl.isNotEmpty()) {
-                            AsyncImage(model = ride.passengerPhotoUrl, contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
+                        if (ride.riderPhotoUrl.isNotEmpty()) {
+                            AsyncImage(model = ride.riderPhotoUrl, contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
                         } else {
-                            Text(ride.passengerName.firstOrNull()?.toString() ?: "P", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF59E0B))
+                            Text(ride.riderName.firstOrNull()?.toString() ?: "R", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AdminAccent)
                         }
                     }
                     Column {
-                        Text(ride.passengerName, fontWeight = FontWeight.SemiBold, color = AdminTextPrimary)
-                        Text(ride.passengerPhone, fontSize = 12.sp, color = AdminTextSecondary)
+                        Text(ride.riderName, fontWeight = FontWeight.SemiBold, color = AdminTextPrimary)
+                        Text(ride.riderPhone.ifEmpty { "No phone" }, fontSize = 12.sp, color = AdminTextSecondary)
                     }
                 }
-            }
 
-            HorizontalDivider(color = AdminBorder)
-            Text("Route", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminTextMuted)
-            AdminDetailRow(Icons.Default.MyLocation,  Color(0xFF10B981), "From",    ride.startLocation)
-            AdminDetailRow(Icons.Default.LocationOn,  Color(0xFFEF4444), "To",      ride.destination)
-            AdminDetailRow(Icons.Default.Place,       AdminAccent,       "Pickup",  ride.pickupLocation.ifEmpty { "Not specified" })
-            AdminDetailRow(Icons.Default.AccessTime,  AdminAccent,       "Time",    ride.rideTime)
-            AdminDetailRow(Icons.Default.Payments,    AdminAccent,       "Cost",    "NPR ${ride.cost}")
-            AdminDetailRow(Icons.Default.CalendarToday, AdminTextMuted,  "Created", SimpleDateFormat("MMM dd, yyyy  hh:mm a", Locale.getDefault()).format(Date(ride.createdAt)))
+                HorizontalDivider(color = AdminBorder)
+                Text("Vehicle", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminTextMuted)
+                Text(ride.vehicleNumber, fontSize = 14.sp, color = AdminTextPrimary)
+                if (ride.vehiclePhotoUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = ride.vehiclePhotoUrl, contentDescription = null,
+                        modifier = Modifier.fillMaxWidth().height(140.dp).clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
 
-            if (ride.remarks.isNotEmpty()) {
-                AdminDetailRow(Icons.Default.Notes, AdminTextMuted, "Remarks", ride.remarks)
-            }
+                if (ride.bookedBy.isNotEmpty()) {
+                    HorizontalDivider(color = AdminBorder)
+                    Text("Passenger", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminTextMuted)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Box(
+                            modifier = Modifier.size(48.dp).clip(CircleShape).background(Color(0xFFF59E0B).copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (ride.passengerPhotoUrl.isNotEmpty()) {
+                                AsyncImage(model = ride.passengerPhotoUrl, contentDescription = null, modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
+                            } else {
+                                Text(ride.passengerName.firstOrNull()?.toString() ?: "P", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF59E0B))
+                            }
+                        }
+                        Column {
+                            Text(ride.passengerName, fontWeight = FontWeight.SemiBold, color = AdminTextPrimary)
+                            Text(ride.passengerPhone, fontSize = 12.sp, color = AdminTextSecondary)
+                        }
+                    }
+                }
 
-            Spacer(Modifier.height(4.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
-                ) { Text("Close", color = AdminTextSecondary) }
-                Button(
-                    onClick = onDelete,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Delete, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Cancel Ride", fontWeight = FontWeight.Bold)
+                HorizontalDivider(color = AdminBorder)
+                Text("Route", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AdminTextMuted)
+                AdminDetailRow(Icons.Default.MyLocation,    Color(0xFF10B981), "From",    ride.startLocation)
+                AdminDetailRow(Icons.Default.LocationOn,    Color(0xFFEF4444), "To",      ride.destination)
+                AdminDetailRow(Icons.Default.Place,         AdminAccent,       "Pickup",  ride.pickupLocation.ifEmpty { "Not specified" })
+                AdminDetailRow(Icons.Default.AccessTime,    AdminAccent,       "Time",    ride.rideTime)
+                AdminDetailRow(Icons.Default.Payments,      AdminAccent,       "Cost",    "NPR ${ride.cost}")
+                AdminDetailRow(Icons.Default.CalendarToday, AdminTextMuted,    "Created", SimpleDateFormat("MMM dd, yyyy  hh:mm a", Locale.getDefault()).format(Date(ride.createdAt)))
+
+                if (ride.remarks.isNotEmpty()) {
+                    AdminDetailRow(Icons.Default.Notes, AdminTextMuted, "Remarks", ride.remarks)
+                }
+
+                Spacer(Modifier.height(4.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) { Text("Close", color = AdminTextSecondary) }
+                    Button(
+                        onClick = onDelete,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Cancel Ride", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
@@ -635,7 +680,7 @@ fun AdminRideDetailDialog(ride: Ride, onDismiss: () -> Unit, onDelete: () -> Uni
 }
 
 @Composable
-fun AdminDetailRow(icon: androidx.compose.ui.graphics.vector.ImageVector, iconTint: Color, label: String, value: String) {
+fun AdminDetailRow(icon: ImageVector, iconTint: Color, label: String, value: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(imageVector = icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(18.dp))
         Column {
@@ -812,10 +857,14 @@ fun VerificationReviewDialog(user: User, verification: Verification, onApprove: 
             } else {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(onClick = { showRejectConfirm = true }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)), shape = RoundedCornerShape(12.dp)) {
-                        Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Reject", fontWeight = FontWeight.SemiBold)
+                        Icon(imageVector = Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Reject", fontWeight = FontWeight.SemiBold)
                     }
                     Button(onClick = onApprove, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)), shape = RoundedCornerShape(12.dp)) {
-                        Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Approve", fontWeight = FontWeight.SemiBold)
+                        Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Approve", fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -824,5 +873,12 @@ fun VerificationReviewDialog(user: User, verification: Verification, onApprove: 
                 Text("Cancel", color = AdminTextSecondary)
             }
         }
+    }
+}
+
+@Composable
+fun AdminIssuesSection() {
+    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("Issues & Support coming soon...", color = AdminTextSecondary)
     }
 }
