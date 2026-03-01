@@ -35,6 +35,27 @@ class RideRepository {
         }
     }
 
+    // ✅ NEW: Fetch ALL rides regardless of status (for admin)
+    suspend fun getAllRides(): Result<List<Ride>> {
+        return try {
+            val snapshot = db.child("rides").get().await()
+            val rides = snapshot.children.mapNotNull { it.getValue(Ride::class.java) }
+            Result.Success(rides.sortedByDescending { it.createdAt })
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Failed to fetch all rides")
+        }
+    }
+
+    // ✅ NEW: Delete a ride by ID (for admin)
+    suspend fun deleteRide(rideId: String): Result<Boolean> {
+        return try {
+            db.child("rides").child(rideId).removeValue().await()
+            Result.Success(true)
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Failed to delete ride")
+        }
+    }
+
     suspend fun getRidesByRider(riderId: String): Result<List<Ride>> {
         return try {
             val snapshot = db.child("rides")
@@ -77,10 +98,10 @@ class RideRepository {
     }
 
     suspend fun bookRide(
-        rideId: String, 
-        userId: String, 
-        userName: String, 
-        userPhone: String, 
+        rideId: String,
+        userId: String,
+        userName: String,
+        userPhone: String,
         userPhotoUrl: String
     ): Result<Boolean> {
         return try {
@@ -100,9 +121,7 @@ class RideRepository {
 
     suspend fun cancelBooking(rideId: String, status: String = "active", cancelledBy: String = ""): Result<Boolean> {
         return try {
-            val updates = mutableMapOf<String, Any?>(
-                "status" to status
-            )
+            val updates = mutableMapOf<String, Any?>("status" to status)
             if (status == "active") {
                 updates["bookedBy"] = ""
                 updates["passengerName"] = ""
@@ -110,7 +129,6 @@ class RideRepository {
                 updates["passengerPhotoUrl"] = ""
             }
             if (cancelledBy.isNotEmpty()) updates["cancelledBy"] = cancelledBy
-            
             db.child("rides").child(rideId).updateChildren(updates).await()
             Result.Success(true)
         } catch (e: Exception) {

@@ -20,6 +20,10 @@ class RideViewModel : ViewModel() {
     private val _allRidesState = MutableStateFlow<Result<List<Ride>>?>(null)
     val allRidesState: StateFlow<Result<List<Ride>>?> = _allRidesState
 
+    // ✅ NEW: All rides for admin (no status filter)
+    private val _adminAllRidesState = MutableStateFlow<Result<List<Ride>>?>(null)
+    val adminAllRidesState: StateFlow<Result<List<Ride>>?> = _adminAllRidesState
+
     private val _riderRidesState = MutableStateFlow<Result<List<Ride>>?>(null)
     val riderRidesState: StateFlow<Result<List<Ride>>?> = _riderRidesState
 
@@ -28,6 +32,10 @@ class RideViewModel : ViewModel() {
 
     private val _updateRideState = MutableStateFlow<Result<Boolean>?>(null)
     val updateRideState: StateFlow<Result<Boolean>?> = _updateRideState
+
+    // ✅ NEW: Delete ride state for admin
+    private val _deleteRideState = MutableStateFlow<Result<Boolean>?>(null)
+    val deleteRideState: StateFlow<Result<Boolean>?> = _deleteRideState
 
     fun addRide(ride: Ride) {
         viewModelScope.launch {
@@ -42,6 +50,28 @@ class RideViewModel : ViewModel() {
             _allRidesState.value = repository.getAllActiveRides()
         }
     }
+
+    // ✅ NEW: For admin — fetches ALL rides regardless of status
+    fun fetchAllRidesForAdmin() {
+        viewModelScope.launch {
+            _adminAllRidesState.value = Result.Loading
+            _adminAllRidesState.value = repository.getAllRides()
+        }
+    }
+
+    // ✅ NEW: For admin — deletes a ride and refreshes the admin list
+    fun deleteRide(rideId: String) {
+        viewModelScope.launch {
+            _deleteRideState.value = Result.Loading
+            val result = repository.deleteRide(rideId)
+            _deleteRideState.value = result
+            if (result is Result.Success) {
+                fetchAllRidesForAdmin()
+            }
+        }
+    }
+
+    fun clearDeleteRideState() { _deleteRideState.value = null }
 
     fun fetchRidesByRider(riderId: String) {
         viewModelScope.launch {
@@ -62,7 +92,6 @@ class RideViewModel : ViewModel() {
             _updateRideState.value = Result.Loading
             val result = repository.updateRideStatus(rideId, status, cancelledBy)
             _updateRideState.value = result
-            // Refresh lists after update
             if (result is Result.Success) {
                 fetchAllActiveRides()
             }

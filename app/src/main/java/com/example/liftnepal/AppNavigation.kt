@@ -26,23 +26,29 @@ fun AppNavigation() {
         composable("login")            { LoginScreen(navController, authViewModel) }
         composable("signup")           { SignupScreen(navController, authViewModel) }
         composable("forget_password")  { ForgetPasswordScreen(navController, authViewModel) }
-        
-        composable("dashboard") { 
+
+        composable("dashboard") {
             DashboardScreen(
-                navController = navController, 
-                authViewModel = authViewModel, 
+                navController = navController,
+                authViewModel = authViewModel,
                 rideViewModel = rideViewModel
-            ) 
+            )
         }
-        
-        composable("rider_dashboard") { 
+
+        composable("rider_dashboard") {
             RiderDashboard(
-                navController = navController, 
-                authViewModel = authViewModel, 
+                navController = navController,
+                authViewModel = authViewModel,
                 rideViewModel = rideViewModel
-            ) 
+            )
         }
-        
-        composable("admin_dashboard")  { AdminDashboard(navController, authViewModel) }
+
+        composable("admin_dashboard") {
+            AdminDashboard(
+                navController = navController,
+                viewModel = authViewModel,
+                rideViewModel = rideViewModel  // ✅ Fixed
+            )
+        }
     }
 }
