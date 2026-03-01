@@ -33,12 +33,10 @@ import com.example.liftnepal.ui.theme.*
 fun DashboardScreen(
     navController: NavHostController,
     authViewModel: AuthViewModel,
-    rideViewModel: RideViewModel  // ✅ Add RideViewModel parameter
+    rideViewModel: RideViewModel
 ) {
     var currentRoute by remember { mutableStateOf("rides") }
 
-    // ✅ Use userData from Firebase Realtime DB (has displayName)
-    // NOT currentUser from Firebase Auth (displayName is empty there)
     val currentUserDataState by authViewModel.currentUserData.collectAsState()
     val userData = (currentUserDataState as? Result.Success)?.data
 
@@ -46,7 +44,6 @@ fun DashboardScreen(
         authViewModel.fetchCurrentUserData()
     }
 
-    // Use userData.displayName — falls back to email initial if still loading
     val displayName = userData?.displayName ?: ""
     val userEmail   = userData?.email ?: ""
     val profilePhotoUrl = userData?.profilePhotoUrl ?: ""
@@ -88,12 +85,12 @@ fun DashboardScreen(
                 label = "dashboard_section"
             ) { route ->
                 when (route) {
-                    "rides"    -> RidesSection(rideViewModel = rideViewModel)
+                    "rides"    -> RidesSection(rideViewModel = rideViewModel, authViewModel = authViewModel)
                     "bookings" -> BookingsSection()
                     "issues"   -> IssueSection()
                     "menu"     -> MenuSection(
-                        userName        = displayName,   // ✅ from DB
-                        userEmail       = userEmail,     // ✅ from DB
+                        userName        = displayName,
+                        userEmail       = userEmail,
                         userData        = userData,
                         viewModel       = authViewModel,
                         onLogout        = {
@@ -137,7 +134,6 @@ fun UserTopBar(
                     Column {
                         Text("Hello,", fontSize = 13.sp, color = TextSecondary)
                         Text(
-                            // Show name, or "..." while loading
                             text = userName.ifEmpty { "..." },
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
@@ -162,7 +158,6 @@ fun UserTopBar(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Notification bell
                     Box(
                         modifier = Modifier
                             .size(40.dp)
@@ -172,7 +167,6 @@ fun UserTopBar(
                         Icon(Icons.Default.Notifications, null, tint = PrimaryColor, modifier = Modifier.size(22.dp))
                     }
 
-                    // Profile avatar — real photo or initial letter
                     Box(
                         modifier = Modifier
                             .size(40.dp)
@@ -191,7 +185,6 @@ fun UserTopBar(
                             )
                         } else {
                             Text(
-                                // ✅ Initial letter from DB display name
                                 text = userName.firstOrNull()?.toString() ?: "",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,

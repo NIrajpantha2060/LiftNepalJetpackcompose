@@ -13,14 +13,17 @@ data class Ride(
     val startLocation: String = "",
     val destination: String = "",
     val pickupLocation: String = "",
-    val rideTime: String = "",              // ← NEW: e.g. "08:00 PM"
+    val rideTime: String = "",
 
     val remarks: String = "",
     val cost: String = "",
 
-    val status: String = "active",
+    val status: String = "active", // active, booked, completed, cancelled
     val createdAt: Long = System.currentTimeMillis(),
 
     val availableSeats: Int = 1,
-    val bookedBy: String = ""
+    val bookedBy: String = "",
+    val passengerName: String = "",
+    val passengerPhone: String = "",
+    val passengerPhotoUrl: String = ""
 )
