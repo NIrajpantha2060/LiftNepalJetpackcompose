@@ -230,24 +230,24 @@ fun DeleteConfirmDialog(userName: String, onConfirm: () -> Unit, onDismiss: () -
 }
 
 // ─────────────────────────────────────────────────────────────
-// RIDES SECTION (ADMIN)
+// RIDES SECTION (ADMIN) — ✅ FIXED: now uses adminAllRidesState + fetchAllRidesForAdmin()
 // ─────────────────────────────────────────────────────────────
 
 @Composable
 fun AdminRidesSection(rideViewModel: RideViewModel) {
-    val allRidesState by rideViewModel.allRidesState.collectAsState()
+    val allRidesState by rideViewModel.adminAllRidesState.collectAsState()  // ✅ FIXED
     val updateRideState by rideViewModel.updateRideState.collectAsState()
 
     var selectedFilter by remember { mutableStateOf("All") }
     var selectedRide by remember { mutableStateOf<Ride?>(null) }
     var rideToDelete by remember { mutableStateOf<Ride?>(null) }
 
-    LaunchedEffect(Unit) { rideViewModel.fetchAllActiveRides() }
+    LaunchedEffect(Unit) { rideViewModel.fetchAllRidesForAdmin() }  // ✅ FIXED
 
     // Refresh after update
     LaunchedEffect(updateRideState) {
         if (updateRideState is Result.Success) {
-            rideViewModel.fetchAllActiveRides()
+            rideViewModel.fetchAllRidesForAdmin()  // ✅ FIXED
             rideViewModel.clearUpdateRideState()
         }
     }
@@ -280,7 +280,7 @@ fun AdminRidesSection(rideViewModel: RideViewModel) {
                 Column(modifier = Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text((allRidesState as Result.Error).message, color = AdminAccent)
                     Spacer(Modifier.height(8.dp))
-                    Button(onClick = { rideViewModel.fetchAllActiveRides() }, colors = ButtonDefaults.buttonColors(containerColor = AdminAccent)) { Text("Retry") }
+                    Button(onClick = { rideViewModel.fetchAllRidesForAdmin() }, colors = ButtonDefaults.buttonColors(containerColor = AdminAccent)) { Text("Retry") }  // ✅ FIXED
                 }
             }
             else -> {
