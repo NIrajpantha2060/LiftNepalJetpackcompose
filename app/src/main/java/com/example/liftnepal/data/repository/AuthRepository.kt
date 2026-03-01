@@ -97,7 +97,6 @@ class AuthRepository {
         }
     }
 
-    // Save profile photo URL to users/{uid}/profilePhotoUrl
     suspend fun updateProfilePhoto(uid: String, photoUrl: String): Result<Boolean> {
         return try {
             db.child("users").child(uid).child("profilePhotoUrl").setValue(photoUrl).await()
@@ -107,13 +106,99 @@ class AuthRepository {
         }
     }
 
-    // Update vehicle info for user
     suspend fun updateVehicleInfo(uid: String, vehicle: Vehicle): Result<Boolean> {
         return try {
             db.child("users").child(uid).child("vehicle").setValue(vehicle).await()
             Result.Success(true)
         } catch (e: Exception) {
             Result.Error(e.message ?: "Failed to update vehicle info")
+        }
+    }
+
+    // ─── Strike System ────────────────────────────────────────────
+
+    // ✅ NEW: Add a strike to user. Also cancels verification if strikeCount reaches 3.
+    suspend fun addStrike(uid: String): Result<Int> {
+        return try {
+            val snapshot = db.child("users").child(uid).get().await()
+            val user = snapshot.getValue(User::class.java) ?: return Result.Error("User not found")
+            val newStrikeCount = user.strikeCount + 1
+
+            db.child("users").child(uid).child("strikeCount").setValue(newStrikeCount).await()
+
+            // Notify user about strike
+            notificationRepo.sendNotification(Notification(
+                userId = uid,
+                title = "⚠️ Strike Warning",
+                message = "You have received a strike from the admin. Total strikes: $newStrikeCount. Please follow community guidelines.",
+                type = "strike"
+            ))
+
+            // If 3 or more strikes, auto-cancel verification
+            if (newStrikeCount >= 3) {
+                val verSnapshot = db.child("verifications").child(uid).get().await()
+                if (verSnapshot.exists()) {
+                    db.child("verifications").child(uid).child("status").setValue("rejected").await()
+                    db.child("verifications").child(uid).child("remarks").setValue("Verification cancelled due to 3 or more strikes.").await()
+                    notificationRepo.sendNotification(Notification(
+                        userId = uid,
+                        title = "Verification Cancelled",
+                        message = "Your verification has been cancelled automatically due to receiving 3 or more strikes.",
+                        type = "verification"
+                    ))
+                }
+            }
+
+            Result.Success(newStrikeCount)
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Failed to add strike")
+        }
+    }
+
+    // ✅ NEW: Remove a strike from user (undo)
+    suspend fun removeStrike(uid: String): Result<Int> {
+        return try {
+            val snapshot = db.child("users").child(uid).get().await()
+            val user = snapshot.getValue(User::class.java) ?: return Result.Error("User not found")
+            val newStrikeCount = maxOf(0, user.strikeCount - 1)
+
+            db.child("users").child(uid).child("strikeCount").setValue(newStrikeCount).await()
+
+            notificationRepo.sendNotification(Notification(
+                userId = uid,
+                title = "Strike Removed",
+                message = "A strike has been removed from your account. Total strikes: $newStrikeCount.",
+                type = "strike"
+            ))
+
+            Result.Success(newStrikeCount)
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Failed to remove strike")
+        }
+    }
+
+    // ✅ NEW: Manually cancel a user's verification
+    suspend fun cancelVerification(uid: String, reason: String): Result<Boolean> {
+        return try {
+            val verSnapshot = db.child("verifications").child(uid).get().await()
+            if (!verSnapshot.exists()) return Result.Error("No verification found for this user")
+
+            val updates = mapOf(
+                "status" to "rejected",
+                "remarks" to reason
+            )
+            db.child("verifications").child(uid).updateChildren(updates).await()
+
+            notificationRepo.sendNotification(Notification(
+                userId = uid,
+                title = "Verification Cancelled",
+                message = "Your verification has been cancelled by the admin. Reason: $reason",
+                type = "verification"
+            ))
+
+            Result.Success(true)
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Failed to cancel verification")
         }
     }
 
@@ -135,15 +220,14 @@ class AuthRepository {
                 submittedAt = System.currentTimeMillis()
             )
             db.child("verifications").child(uid).setValue(verification).await()
-            
-            // Send notification to user
+
             notificationRepo.sendNotification(Notification(
                 userId = uid,
                 title = "Verification Submitted",
                 message = "Your documents have been submitted and are under review by the admin.",
                 type = "verification"
             ))
-            
+
             Result.Success(true)
         } catch (e: Exception) {
             Result.Error(e.message ?: "Failed to submit verification")
@@ -180,19 +264,18 @@ class AuthRepository {
             val updates = mutableMapOf<String, Any>("status" to status)
             if (remarks.isNotEmpty()) updates["remarks"] = remarks
             db.child("verifications").child(uid).updateChildren(updates).await()
-            
-            // Send notification to user
+
             val title = if (status == "approved") "Verification Approved!" else "Verification Rejected"
-            val message = if (status == "approved") "Congratulations! You are now a verified rider." 
-                         else "Sorry, your verification was rejected. Remarks: $remarks"
-            
+            val message = if (status == "approved") "Congratulations! You are now a verified rider."
+            else "Sorry, your verification was rejected. Remarks: $remarks"
+
             notificationRepo.sendNotification(Notification(
                 userId = uid,
                 title = title,
                 message = message,
                 type = "verification"
             ))
-            
+
             Result.Success(true)
         } catch (e: Exception) {
             Result.Error(e.message ?: "Failed to update status")

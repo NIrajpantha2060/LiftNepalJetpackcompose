@@ -102,8 +102,15 @@ fun StatusBadge(label: String, color: Color) {
     }
 }
 
+// ✅ NEW: Helper — color based on strike severity
+fun strikeColor(count: Int): Color = when {
+    count >= 3 -> Color(0xFFEF4444)
+    count == 2 -> Color(0xFFF59E0B)
+    else       -> Color(0xFFFBBF24)
+}
+
 // ─────────────────────────────────────────────────────────────
-// USERS SECTION
+// USERS SECTION — ✅ Updated with Strike System
 // ─────────────────────────────────────────────────────────────
 
 @Composable
@@ -152,6 +159,29 @@ fun AdminUsersSection(viewModel: AuthViewModel) {
                                     Column {
                                         Text(user.displayName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = AdminTextPrimary)
                                         Text(user.email, fontSize = 11.sp, color = AdminTextSecondary)
+                                        // ✅ NEW: Strike badges shown directly on user card
+                                        if (user.strikeCount > 0) {
+                                            Spacer(Modifier.height(4.dp))
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                repeat(minOf(user.strikeCount, 3)) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Warning,
+                                                        contentDescription = null,
+                                                        tint = strikeColor(user.strikeCount),
+                                                        modifier = Modifier.size(12.dp)
+                                                    )
+                                                }
+                                                Text(
+                                                    "${user.strikeCount} strike${if (user.strikeCount > 1) "s" else ""}",
+                                                    fontSize = 10.sp,
+                                                    color = strikeColor(user.strikeCount),
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                                 IconButton(onClick = { userToDelete = user }) {
@@ -166,7 +196,14 @@ fun AdminUsersSection(viewModel: AuthViewModel) {
         }
 
         selectedUser?.let { user ->
-            UserDetailDialog(user = user, onDismiss = { selectedUser = null })
+            // ✅ NEW: passes strike/verification callbacks
+            UserDetailDialog(
+                user = user,
+                onDismiss = { selectedUser = null },
+                onAddStrike = { viewModel.addStrike(user.uid); selectedUser = null },
+                onRemoveStrike = { viewModel.removeStrike(user.uid); selectedUser = null },
+                onCancelVerification = { reason -> viewModel.cancelVerification(user.uid, reason); selectedUser = null }
+            )
         }
         userToDelete?.let { user ->
             DeleteConfirmDialog(
@@ -178,8 +215,20 @@ fun AdminUsersSection(viewModel: AuthViewModel) {
     }
 }
 
+// ✅ UPDATED: UserDetailDialog now has Strike + Cancel Verification actions
 @Composable
-fun UserDetailDialog(user: User, onDismiss: () -> Unit) {
+fun UserDetailDialog(
+    user: User,
+    onDismiss: () -> Unit,
+    onAddStrike: () -> Unit,
+    onRemoveStrike: () -> Unit,
+    onCancelVerification: (String) -> Unit
+) {
+    var showStrikeConfirm by remember { mutableStateOf(false) }
+    var showRemoveStrikeConfirm by remember { mutableStateOf(false) }
+    var showCancelVerificationDialog by remember { mutableStateOf(false) }
+    var cancelReason by remember { mutableStateOf("") }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = AdminCard,
@@ -192,12 +241,165 @@ fun UserDetailDialog(user: User, onDismiss: () -> Unit) {
                 DetailItem("Email", user.email)
                 DetailItem("Phone", user.phoneNumber)
                 DetailItem("Joined", SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(user.createdAt)))
+
+                HorizontalDivider(color = AdminBorder)
+
+                // ✅ Strike Count Display
+                Text("Strike Count", fontSize = 11.sp, color = AdminTextMuted, fontWeight = FontWeight.SemiBold)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    repeat(3) { index ->
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = if (index < user.strikeCount) strikeColor(user.strikeCount) else AdminBorder,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Text(
+                        "${user.strikeCount} / 3",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (user.strikeCount > 0) strikeColor(user.strikeCount) else AdminTextSecondary
+                    )
+                }
+                if (user.strikeCount >= 3) {
+                    Text(
+                        "⚠ Max strikes reached — verification auto-cancelled",
+                        fontSize = 11.sp, color = Color(0xFFEF4444), fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                // ✅ Add / Remove Strike Buttons
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = { showStrikeConfirm = true },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = user.strikeCount < 3
+                    ) {
+                        Icon(imageVector = Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Add Strike", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                    OutlinedButton(
+                        onClick = { showRemoveStrikeConfirm = true },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = user.strikeCount > 0
+                    ) {
+                        Icon(imageVector = Icons.Default.RemoveCircle, contentDescription = null, modifier = Modifier.size(16.dp), tint = AdminTextSecondary)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Remove", fontSize = 12.sp, color = AdminTextSecondary)
+                    }
+                }
+
+                // ✅ Cancel Verification Button
+                Button(
+                    onClick = { showCancelVerificationDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.GppBad, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Cancel Verification", fontWeight = FontWeight.Bold)
+                }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) { Text("Close", color = AdminAccent, fontWeight = FontWeight.Bold) }
         }
     )
+
+    // Add Strike Confirmation
+    if (showStrikeConfirm) {
+        AlertDialog(
+            onDismissRequest = { showStrikeConfirm = false },
+            containerColor = AdminCard,
+            shape = RoundedCornerShape(20.dp),
+            title = { Text("Add Strike", fontWeight = FontWeight.Bold, color = AdminTextPrimary) },
+            text = {
+                Text(
+                    "Give ${user.displayName} a strike? At 3 strikes their verification will be automatically cancelled.",
+                    color = AdminTextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showStrikeConfirm = false; onAddStrike() },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
+                    shape = RoundedCornerShape(10.dp)
+                ) { Text("Add Strike", color = Color.White, fontWeight = FontWeight.SemiBold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStrikeConfirm = false }) { Text("Cancel", color = AdminTextSecondary) }
+            }
+        )
+    }
+
+    // Remove Strike Confirmation
+    if (showRemoveStrikeConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRemoveStrikeConfirm = false },
+            containerColor = AdminCard,
+            shape = RoundedCornerShape(20.dp),
+            title = { Text("Remove Strike", fontWeight = FontWeight.Bold, color = AdminTextPrimary) },
+            text = { Text("Remove one strike from ${user.displayName}?", color = AdminTextSecondary) },
+            confirmButton = {
+                Button(
+                    onClick = { showRemoveStrikeConfirm = false; onRemoveStrike() },
+                    colors = ButtonDefaults.buttonColors(containerColor = AdminAccent),
+                    shape = RoundedCornerShape(10.dp)
+                ) { Text("Remove", color = Color.White, fontWeight = FontWeight.SemiBold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRemoveStrikeConfirm = false }) { Text("Cancel", color = AdminTextSecondary) }
+            }
+        )
+    }
+
+    // Cancel Verification with reason input
+    if (showCancelVerificationDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelVerificationDialog = false },
+            containerColor = AdminCard,
+            shape = RoundedCornerShape(20.dp),
+            title = { Text("Cancel Verification", fontWeight = FontWeight.Bold, color = AdminTextPrimary) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Reason for cancelling ${user.displayName}'s verification:", color = AdminTextSecondary)
+                    OutlinedTextField(
+                        value = cancelReason,
+                        onValueChange = { cancelReason = it },
+                        placeholder = { Text("e.g. Suspicious activity, false documents...") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFEF4444),
+                            unfocusedBorderColor = AdminBorder
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showCancelVerificationDialog = false
+                        onCancelVerification(cancelReason.ifEmpty { "Cancelled by admin" })
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                    shape = RoundedCornerShape(10.dp)
+                ) { Text("Confirm", color = Color.White, fontWeight = FontWeight.SemiBold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCancelVerificationDialog = false }) { Text("Back", color = AdminTextSecondary) }
+            }
+        )
+    }
 }
 
 @Composable

@@ -37,13 +37,21 @@ class AuthViewModel : ViewModel() {
     private val _currentUserData = MutableStateFlow<Result<User>?>(null)
     val currentUserData: StateFlow<Result<User>?> = _currentUserData
 
-    // Profile photo update state
     private val _profilePhotoState = MutableStateFlow<Result<Boolean>?>(null)
     val profilePhotoState: StateFlow<Result<Boolean>?> = _profilePhotoState
 
-    // Vehicle update state
     private val _vehicleUpdateState = MutableStateFlow<Result<Boolean>?>(null)
     val vehicleUpdateState: StateFlow<Result<Boolean>?> = _vehicleUpdateState
+
+    // ─── Strike States ────────────────────────────────────────────
+
+    // ✅ NEW
+    private val _strikeState = MutableStateFlow<Result<Int>?>(null)
+    val strikeState: StateFlow<Result<Int>?> = _strikeState
+
+    // ✅ NEW
+    private val _cancelVerificationState = MutableStateFlow<Result<Boolean>?>(null)
+    val cancelVerificationState: StateFlow<Result<Boolean>?> = _cancelVerificationState
 
     // ─── Verifications Table States ───────────────────────────────
 
@@ -87,6 +95,8 @@ class AuthViewModel : ViewModel() {
         _currentUserData.value = null
         _profilePhotoState.value = null
         _vehicleUpdateState.value = null
+        _strikeState.value = null
+        _cancelVerificationState.value = null
     }
 
     fun resetPassword(email: String) {
@@ -122,31 +132,65 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    // Save profile photo URL to users/{uid}/profilePhotoUrl
     fun updateProfilePhoto(photoUrl: String) {
         viewModelScope.launch {
             val uid = currentUser?.uid ?: return@launch
             _profilePhotoState.value = Result.Loading
             _profilePhotoState.value = repository.updateProfilePhoto(uid, photoUrl)
-            // Refresh user data so photo appears everywhere immediately
             fetchCurrentUserData()
         }
     }
 
     fun clearProfilePhotoState() { _profilePhotoState.value = null }
 
-    // Save vehicle info to users/{uid}/vehicle
     fun updateVehicleInfo(vehicle: Vehicle) {
         viewModelScope.launch {
             val uid = currentUser?.uid ?: return@launch
             _vehicleUpdateState.value = Result.Loading
             _vehicleUpdateState.value = repository.updateVehicleInfo(uid, vehicle)
-            // Refresh user data so vehicle appears everywhere immediately
             fetchCurrentUserData()
         }
     }
 
     fun clearVehicleUpdateState() { _vehicleUpdateState.value = null }
+
+    // ─── Strike Functions ─────────────────────────────────────────
+
+    // ✅ NEW: Give a strike to a user. Auto-cancels verification at 3 strikes.
+    fun addStrike(uid: String) {
+        viewModelScope.launch {
+            _strikeState.value = Result.Loading
+            val result = repository.addStrike(uid)
+            _strikeState.value = result
+            if (result is Result.Success) fetchAllUsers()
+        }
+    }
+
+    // ✅ NEW: Remove a strike from a user
+    fun removeStrike(uid: String) {
+        viewModelScope.launch {
+            _strikeState.value = Result.Loading
+            val result = repository.removeStrike(uid)
+            _strikeState.value = result
+            if (result is Result.Success) fetchAllUsers()
+        }
+    }
+
+    // ✅ NEW: Manually cancel a user's verification with a reason
+    fun cancelVerification(uid: String, reason: String) {
+        viewModelScope.launch {
+            _cancelVerificationState.value = Result.Loading
+            val result = repository.cancelVerification(uid, reason)
+            _cancelVerificationState.value = result
+            if (result is Result.Success) {
+                fetchAllUsers()
+                fetchAllVerifications()
+            }
+        }
+    }
+
+    fun clearStrikeState() { _strikeState.value = null }
+    fun clearCancelVerificationState() { _cancelVerificationState.value = null }
 
     // ─── Verifications Table Functions ───────────────────────────
 
