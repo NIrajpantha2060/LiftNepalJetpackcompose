@@ -84,5 +84,8 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.2.0")
     androidTestImplementation("androidx.test:rules:1.2.0")
 
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+
 
 }

@@ -1,5 +1,6 @@
 package com.example.liftnepal.presentation.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.liftnepal.data.model.User
@@ -7,6 +8,8 @@ import com.example.liftnepal.data.model.Vehicle
 import com.example.liftnepal.data.model.Verification
 import com.example.liftnepal.data.repository.AuthRepository
 import com.example.liftnepal.data.utils.Result
+import com.example.liftnepal.data.utils.SavedAccountManager
+import com.example.liftnepal.data.utils.SavedCredentials
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,11 +50,9 @@ class AuthViewModel(
 
     // ─── Strike States ────────────────────────────────────────────
 
-    // ✅ NEW
     private val _strikeState = MutableStateFlow<Result<Int>?>(null)
     val strikeState: StateFlow<Result<Int>?> = _strikeState
 
-    // ✅ NEW
     private val _cancelVerificationState = MutableStateFlow<Result<Boolean>?>(null)
     val cancelVerificationState: StateFlow<Result<Boolean>?> = _cancelVerificationState
 
@@ -108,6 +109,24 @@ class AuthViewModel(
         }
     }
 
+    // ─── Saved Credentials Functions ─────────────────────────────
+
+    fun saveCredentials(context: Context, email: String, password: String) {
+        SavedAccountManager.save(context, email, password)
+    }
+
+    fun loadAllSavedCredentials(context: Context): List<SavedCredentials> {
+        return SavedAccountManager.loadAll(context)
+    }
+
+    fun removeSavedCredential(context: Context, email: String) {
+        SavedAccountManager.remove(context, email)
+    }
+
+    fun clearAllSavedCredentials(context: Context) {
+        SavedAccountManager.clearAll(context)
+    }
+
     // ─── Users Table Functions ────────────────────────────────────
 
     fun fetchAllUsers() {
@@ -158,7 +177,6 @@ class AuthViewModel(
 
     // ─── Strike Functions ─────────────────────────────────────────
 
-    // ✅ NEW: Give a strike to a user. Auto-cancels verification at 3 strikes.
     fun addStrike(uid: String) {
         viewModelScope.launch {
             _strikeState.value = Result.Loading
@@ -168,7 +186,6 @@ class AuthViewModel(
         }
     }
 
-    // ✅ NEW: Remove a strike from a user
     fun removeStrike(uid: String) {
         viewModelScope.launch {
             _strikeState.value = Result.Loading
@@ -178,7 +195,6 @@ class AuthViewModel(
         }
     }
 
-    // ✅ NEW: Manually cancel a user's verification with a reason
     fun cancelVerification(uid: String, reason: String) {
         viewModelScope.launch {
             _cancelVerificationState.value = Result.Loading
