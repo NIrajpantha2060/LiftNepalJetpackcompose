@@ -19,7 +19,7 @@ object CloudinaryUploader {
     // Presets — one per feature
     const val PRESET_LICENSES = "liftnepal_licenses"
     const val PRESET_PROFILES = "liftnepal_profiles"
-    const val PRESET_RIDES    = "liftnepal_rides"     // for future use
+    const val PRESET_RIDES    = "liftnepal_rides"
 
     const val PRESET_ISSUES   = "liftnepal_issues"
 

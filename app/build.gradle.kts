@@ -77,4 +77,12 @@ dependencies {
     implementation("com.cloudinary:cloudinary-android:3.1.2")
     implementation("io.coil-kt:coil-compose:2.5.0")
 
+    testImplementation("org.mockito:mockito-core:5.11.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+
+    androidTestImplementation("androidx.test:runner:1.2.0")
+    androidTestImplementation("androidx.test:rules:1.2.0")
+
+
 }

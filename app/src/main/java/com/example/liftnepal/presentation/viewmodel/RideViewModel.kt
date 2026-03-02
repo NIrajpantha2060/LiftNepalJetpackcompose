@@ -10,9 +10,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class RideViewModel : ViewModel() {
 
-    private val repository = RideRepository()
+class RideViewModel(
+    private val repository: RideRepository = RideRepository()
+) : ViewModel() {
 
     private val _addRideState = MutableStateFlow<Result<Boolean>?>(null)
     val addRideState: StateFlow<Result<Boolean>?> = _addRideState
